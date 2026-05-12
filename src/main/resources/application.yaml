@@ -1,0 +1,142 @@
+# Server Configuration
+# Defines the port on which the application will run
+server:
+  port: 8085
+
+# Spring Framework Configuration
+spring:
+  # Application name for service discovery and logging
+  application:
+    name: DOCUMENT-SERVICE
+
+  # Spring AI Configuration for Azure OpenAI integration
+  ai:
+    model:
+      chat: ${SPRING_AI_MODEL_CHAT:none}  # Chat model configuration
+      embedding: none  # Embedding model (not used)
+      image: none  # Image processing (not used)
+      audio:
+        transcription: none  # Audio transcription (not used)
+        speech: none  # Text-to-speech (not used)
+    azure:
+      openai:
+        endpoint: ${AZURE_OPENAI_ENDPOINT:}  # Azure OpenAI service endpoint
+        api-key: ${AZURE_OPENAI_KEY:}  # API key for authentication
+        chat:
+          options:
+            deployment-name: ${AZURE_OPENAI_DEPLOYMENT:gpt-4o-mini}  # Model deployment name
+  
+  # Spring Cloud Config (disabled for local development)
+  cloud:
+    config:
+      enabled: false
+  
+  # Database Configuration
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/leave_management_system}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: DocumentServiceHikariPool
+  
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+    open-in-view: false
+  
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=10m
+
+# Azure Storage Configuration
+azure:
+  storage:
+    account-name: ${AZURE_STORAGE_ACCOUNT_NAME:cresengpt}
+    account-key: ${AZURE_STORAGE_ACCOUNT_KEY}
+    account-url: ${AZURE_STORAGE_ACCOUNT_URL:https://cresengpt.blob.core.windows.net/}
+    container-name: ${AZURE_STORAGE_CONTAINER_NAME:internchatgptdoccontainer}
+    blob-sas-expires-in-seconds: ${AZURE_BLOB_SAS_EXPIRES_SECONDS:3600}
+    blob-sas-expires-in-days-for-pdf: ${AZURE_BLOB_SAS_EXPIRES_DAYS_PDF:7}
+  openai:
+    endpoint: ${AZURE_OPENAI_ENDPOINT:}
+    api-key: ${AZURE_OPENAI_KEY:}
+    deployment: ${AZURE_OPENAI_DEPLOYMENT:gpt-4o-mini}
+    api-version: ${AZURE_API_VERSION:2024-02-01}
+
+doc-search:
+  workflow:
+    conversation-cache-size: ${DOC_SEARCH_CONVERSATION_CACHE_SIZE:500}
+    conversation-timeout-seconds: ${DOC_SEARCH_CONVERSATION_TIMEOUT_SECONDS:3600}
+    request-timeout-seconds: ${DOC_SEARCH_REQUEST_TIMEOUT_SECONDS:120}
+    recent-message-limit: ${DOC_SEARCH_RECENT_MESSAGE_LIMIT:10}
+
+# Eureka Client Configuration
+eureka:
+  client:
+    enabled: false
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Resilience4j Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      documentService:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10000
+        permitted-number-of-calls-in-half-open-state: 3
+  
+  timelimiter:
+    instances:
+      documentService:
+        timeout-duration: 30s
+
+# OpenAPI Documentation
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+# Logging
+logging:
+  level:
+    com.cresensolutions: INFO
+    com.azure: WARN
+    org.hibernate.SQL: DEBUG
