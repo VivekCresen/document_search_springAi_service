@@ -33,7 +33,9 @@ public interface ChatHistoryService {
             Long userId,
             String userQuestion,
             String standaloneQuery,
-            Integer questionId
+            String assistantAnswer,
+            Integer questionId,
+            Map<String, Object> metadata
     );
 
     /**

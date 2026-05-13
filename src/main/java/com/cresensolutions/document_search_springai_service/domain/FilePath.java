@@ -5,7 +5,9 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 
 @Data
@@ -16,8 +18,23 @@ public class FilePath implements Serializable {
 
     public static FilePath of(List<String> segments) {
         FilePath fp = new FilePath();
-        fp.setFilePath(new ArrayList<>(segments));
+        fp.setFilePath(segments == null ? new ArrayList<>() : new ArrayList<>(segments));
         return fp;
+    }
+
+    public boolean isValid() {
+        return filePath != null && filePath.stream().anyMatch(segment -> segment != null && !segment.isBlank());
+    }
+
+    public FilePath normalized() {
+        if (filePath == null) {
+            return FilePath.of(Collections.emptyList());
+        }
+        return FilePath.of(filePath.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(segment -> !segment.isBlank())
+                .toList());
     }
 
  

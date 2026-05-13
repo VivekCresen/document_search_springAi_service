@@ -15,4 +15,15 @@ public interface PrestageDocumentRepository extends JpaRepository<PrestageDocume
 
     @Query("SELECT COUNT(d) FROM PrestageDocument d WHERE d.file = false")
     long countFolders();
+
+    /**
+     * Finds a document entry by name, parent, and its type (file vs folder).
+     * Used during synchronization to traverse or build the hierarchical tree.
+     * 
+     * @param name   the name of the file or folder
+     * @param parent the parent document (null for root)
+     * @param file   true if searching for a file, false for a folder
+     * @return the document if found
+     */
+    java.util.Optional<PrestageDocument> findByNameAndParentAndFile(String name, PrestageDocument parent, boolean file);
 }

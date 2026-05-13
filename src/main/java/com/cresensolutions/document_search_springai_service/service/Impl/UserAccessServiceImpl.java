@@ -65,6 +65,7 @@ public class UserAccessServiceImpl implements UserAccessService {
     }
 
     @Override
+    @Cacheable(value = "unstableUris")
     public List<String> getUnstableFileUris() {
         return fileInIndexRepository.findUnstableBlobUris();
     }
@@ -157,6 +158,12 @@ public class UserAccessServiceImpl implements UserAccessService {
     @CacheEvict(value = "userRestrictions", allEntries = true)
     public void clearAllUserRestrictionsCache() {
         log.info("Cleared all user restrictions cache");
+    }
+
+    @Override
+    @CacheEvict(value = "userRestrictions", key = "#username")
+    public void clearUserRestrictionsCache(String username) {
+        log.info("Cleared restrictions cache for user {}", username);
     }
 
     private String escapeODataValue(String value) {

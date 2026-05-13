@@ -6,11 +6,11 @@ import org.springframework.stereotype.Component;
 
 @Data
 @Component
-@ConfigurationProperties(prefix = "azure.openai")
-public class AzureOpenAiProperty {
+@ConfigurationProperties(prefix = "azure.search")
+public class AzureSearchProperty {
 
     private String endpoint;
     private String apiKey;
-    private String deployment = "gpt-4o-mini";
-    private String apiVersion = "2024-02-01";
+    private String indexName = "cresendemo_mmchatbot_v1";
+    private String apiVersion = "2023-11-01";
 }

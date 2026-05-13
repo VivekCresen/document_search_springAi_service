@@ -12,25 +12,25 @@ spring:
   # Spring AI Configuration for Azure OpenAI integration
   ai:
     model:
-      chat: ${SPRING_AI_MODEL_CHAT:none}  # Chat model configuration
-      embedding: none  # Embedding model (not used)
-      image: none  # Image processing (not used)
+      chat: ${SPRING_AI_MODEL_CHAT:none} # Chat model configuration
+      embedding: none # Embedding model (not used)
+      image: none # Image processing (not used)
       audio:
-        transcription: none  # Audio transcription (not used)
-        speech: none  # Text-to-speech (not used)
+        transcription: none # Audio transcription (not used)
+        speech: none # Text-to-speech (not used)
     azure:
       openai:
-        endpoint: ${AZURE_OPENAI_ENDPOINT:}  # Azure OpenAI service endpoint
-        api-key: ${AZURE_OPENAI_KEY:}  # API key for authentication
+        endpoint: ${AZURE_OPENAI_ENDPOINT:} # Azure OpenAI service endpoint
+        api-key: ${AZURE_OPENAI_KEY:} # API key for authentication
         chat:
           options:
-            deployment-name: ${AZURE_OPENAI_DEPLOYMENT:gpt-4o-mini}  # Model deployment name
-  
+            deployment-name: ${AZURE_OPENAI_DEPLOYMENT:gpt-4o-mini} # Model deployment name
+
   # Spring Cloud Config (disabled for local development)
   cloud:
     config:
       enabled: false
-  
+
   # Database Configuration
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/leave_management_system}
@@ -44,7 +44,7 @@ spring:
       idle-timeout: 600000
       max-lifetime: 1800000
       pool-name: DocumentServiceHikariPool
-  
+
   jpa:
     hibernate:
       ddl-auto: none
@@ -58,7 +58,7 @@ spring:
         order_inserts: true
         order_updates: true
     open-in-view: false
-  
+
   cache:
     type: caffeine
     caffeine:
@@ -78,13 +78,23 @@ azure:
     api-key: ${AZURE_OPENAI_KEY:}
     deployment: ${AZURE_OPENAI_DEPLOYMENT:gpt-4o-mini}
     api-version: ${AZURE_API_VERSION:2024-02-01}
+  search:
+    endpoint: ${AZURE_SEARCH_ENDPOINT:}
+    api-key: ${AZURE_SEARCH_ADMIN_KEY:${AZURE_SEARCH_KEY:}}
+    index-name: ${AZURE_SEARCH_INDEX_NAME:cresendemo_mmchatbot_v1}
+    api-version: ${AZURE_SEARCH_API_VERSION:2023-11-01}
 
 doc-search:
   workflow:
     conversation-cache-size: ${DOC_SEARCH_CONVERSATION_CACHE_SIZE:500}
     conversation-timeout-seconds: ${DOC_SEARCH_CONVERSATION_TIMEOUT_SECONDS:3600}
-    request-timeout-seconds: ${DOC_SEARCH_REQUEST_TIMEOUT_SECONDS:120}
+    request-timeout-seconds: ${DOC_SEARCH_REQUEST_TIMEOUT_SECONDS:500}
     recent-message-limit: ${DOC_SEARCH_RECENT_MESSAGE_LIMIT:10}
+    target-endpoint: ${TARGET_ENDPOINT:}
+    rag-max-context-chars: ${DOC_SEARCH_RAG_MAX_CONTEXT_CHARS:24000}
+    rag-max-document-chars: ${DOC_SEARCH_RAG_MAX_DOCUMENT_CHARS:6000}
+  schema-registry:
+    refresh-interval-ms: ${DOC_SEARCH_SCHEMA_REFRESH_MS:86400000} # 24 hours
 
 # Eureka Client Configuration
 eureka:
@@ -121,7 +131,7 @@ resilience4j:
         failure-rate-threshold: 50
         wait-duration-in-open-state: 10000
         permitted-number-of-calls-in-half-open-state: 3
-  
+
   timelimiter:
     instances:
       documentService:

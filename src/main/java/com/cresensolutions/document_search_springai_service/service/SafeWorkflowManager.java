@@ -34,4 +34,9 @@ public interface SafeWorkflowManager {
      * Returns the active workflow for a conversation or creates one when missing/expired.
      */
     SecuredEnhancedUnifiedWorkflow getOrCreateConversation(String conversationId, Long userId);
+
+    /**
+     * Returns lightweight runtime stats for health and metrics endpoints.
+     */
+    Map<String, Object> getStats();
 }

@@ -70,4 +70,10 @@ public interface UserAccessService {
      * Clears the cached restriction lookup for all users.
      */
     void clearAllUserRestrictionsCache();
+
+    /**
+     * Clears the cached restriction lookup for a single user.
+     * Mirrors Python UserPermissionManager.clear_cache(username).
+     */
+    void clearUserRestrictionsCache(String username);
 }

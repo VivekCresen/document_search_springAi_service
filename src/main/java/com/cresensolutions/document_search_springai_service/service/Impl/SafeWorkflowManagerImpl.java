@@ -89,6 +89,21 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
         return cached.workflow();
     }
 
+    @Override
+    public Map<String, Object> getStats() {
+        cleanupIfNeeded();
+        long expiredCount = activeConversations.values().stream()
+                .filter(conversation -> conversation.isExpired(workflowProperty.getConversationTimeoutSeconds()))
+                .count();
+        return Map.of(
+                "active_conversations", activeConversations.size(),
+                "expired_conversations", expiredCount,
+                "conversation_cache_size", workflowProperty.getConversationCacheSize(),
+                "conversation_timeout_seconds", workflowProperty.getConversationTimeoutSeconds(),
+                "request_count", requestCounter.get()
+        );
+    }
+
     private String cacheKey(String conversationId, Long userId) {
         // Include user id so two users cannot share the same cached conversation accidentally.
         return conversationId + "::" + (userId == null ? "anonymous" : userId);

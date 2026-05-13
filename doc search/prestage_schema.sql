@@ -67,7 +67,71 @@ CREATE INDEX IF NOT EXISTS idx_fii_blob_uri
 CREATE INDEX IF NOT EXISTS idx_fii_folder_id
     ON prestage.files_in_index(folder_id);
 
--- TABLE 4: prestage.db_search_hist_sessions
+-- TABLE 4: public.file_metadata
+-- Upload metadata. filepath is JSONB and stores {"filePath": [...]} exactly as supplied.
+CREATE TABLE IF NOT EXISTS file_metadata (
+    id               SERIAL PRIMARY KEY,
+    filepath         JSONB        NOT NULL,
+    created_by       VARCHAR(255) NOT NULL,
+    create_date      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    azure_blob_url   TEXT         NOT NULL,
+    blob_name        TEXT         NOT NULL,
+    file_size_in_mb  NUMERIC(12, 2),
+    content_type     VARCHAR(255),
+    status           VARCHAR(50)  NOT NULL DEFAULT 'UPLOADED'
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_file_metadata_filepath
+    ON file_metadata USING btree (filepath);
+
+CREATE INDEX IF NOT EXISTS idx_file_metadata_blob_name
+    ON file_metadata(blob_name);
+
+CREATE INDEX IF NOT EXISTS idx_file_metadata_created_by
+    ON file_metadata(created_by);
+
+CREATE INDEX IF NOT EXISTS idx_file_metadata_status
+    ON file_metadata(status);
+
+CREATE INDEX IF NOT EXISTS idx_file_metadata_folder
+    ON file_metadata ((filepath->'filePath'->>0));
+
+CREATE INDEX IF NOT EXISTS idx_file_metadata_document_id
+    ON file_metadata ((filepath->'filePath'->>1));
+
+-- TABLE 5/6: DB-backed schema registry referenced by Python config.py.
+CREATE TABLE IF NOT EXISTS prestage.db_search_sources (
+    id                    BIGSERIAL PRIMARY KEY,
+    view_name             VARCHAR(255) NOT NULL UNIQUE,
+    description           TEXT,
+    routing_metadata      JSONB        NOT NULL DEFAULT '{}'::jsonb,
+    active                BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS prestage.db_search_schema_versions (
+    id                    BIGSERIAL PRIMARY KEY,
+    source_id             BIGINT       NOT NULL,
+    schema_json           JSONB        NOT NULL,
+    version               INTEGER      NOT NULL DEFAULT 1,
+    active                BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_db_search_schema_source
+        FOREIGN KEY (source_id) REFERENCES prestage.db_search_sources(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT uq_db_search_schema_source_version
+        UNIQUE (source_id, version)
+);
+
+CREATE INDEX IF NOT EXISTS idx_db_search_sources_active
+    ON prestage.db_search_sources(active);
+
+CREATE INDEX IF NOT EXISTS idx_db_search_schema_source_active
+    ON prestage.db_search_schema_versions(source_id, active);
+
+-- TABLE 7: prestage.db_search_hist_sessions
 -- One row per conversation session.
 CREATE TABLE IF NOT EXISTS prestage.db_search_hist_sessions (
     id                SERIAL PRIMARY KEY,
@@ -90,7 +154,7 @@ CREATE INDEX IF NOT EXISTS idx_sess_chat_id
 CREATE INDEX IF NOT EXISTS idx_sess_user_id
     ON prestage.db_search_hist_sessions(user_id);
 
--- TABLE 5: prestage.db_search_hist_messages
+-- TABLE 8: prestage.db_search_hist_messages
 -- User questions and assistant answers per conversation.
 CREATE TABLE IF NOT EXISTS prestage.db_search_hist_messages (
     id            BIGSERIAL PRIMARY KEY,

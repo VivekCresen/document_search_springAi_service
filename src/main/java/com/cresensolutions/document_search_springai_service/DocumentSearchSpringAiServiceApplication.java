@@ -1,8 +1,10 @@
 package com.cresensolutions.document_search_springai_service;
 
+import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Main application class for the Document Search Spring AI Service.
@@ -18,6 +20,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  */
 @SpringBootApplication
 @EnableDiscoveryClient
+@EnableScheduling
 public class DocumentSearchSpringAiServiceApplication {
 
     /**
@@ -27,6 +30,14 @@ public class DocumentSearchSpringAiServiceApplication {
      * @param args command line arguments passed to the application
      */
     public static void main(String[] args) {
+        // Load .env file into System properties so Spring Boot can access them
+        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+        dotenv.entries().forEach(entry -> {
+            if (System.getProperty(entry.getKey()) == null && System.getenv(entry.getKey()) == null) {
+                System.setProperty(entry.getKey(), entry.getValue());
+            }
+        });
+
         SpringApplication.run(DocumentSearchSpringAiServiceApplication.class, args);
     }
 

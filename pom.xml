@@ -60,6 +60,19 @@
             <version>12.25.1</version>
         </dependency>
 
+        <!-- PDFBox - PDF annotation/highlighting for document citations -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.31</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- OpenAPI/Swagger - API documentation -->
         <dependency>
             <groupId>org.springdoc</groupId>
@@ -127,6 +140,12 @@
             <artifactId>spring-ai-starter-model-azure-openai</artifactId>
         </dependency>
 
+        <!-- Dotenv - Load .env file as Spring properties -->
+        <dependency>
+            <groupId>io.github.cdimascio</groupId>
+            <artifactId>dotenv-java</artifactId>
+            <version>3.2.0</version>
+        </dependency>
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -1,11 +1,14 @@
 package com.cresensolutions.document_search_springai_service.service;
 
 import com.cresensolutions.document_search_springai_service.dto.DocumentLinkResponse;
+import com.cresensolutions.document_search_springai_service.dto.DownloadedDocument;
 import com.cresensolutions.document_search_springai_service.domain.FileInIndex;
 import com.cresensolutions.document_search_springai_service.domain.FileMetadata;
+import com.cresensolutions.document_search_springai_service.domain.FilePath;
 import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
@@ -17,18 +20,49 @@ import java.util.List;
  */
 public interface DocumentService {
 
+
+
     /**
-     * Uploads a document to Azure Blob Storage and saves metadata to database.
-     * Generates a unique document ID and associates the file with a folder and user.
-     * Clears relevant caches after successful upload.
+     * Uploads a file using a custom hierarchical FilePath object.
+     * This method is useful for bulk-upload or migration scripts where the path
+     * structure is already defined.
      *
-     * @param file the multipart file to upload
-     * @param folderId the folder identifier for organization
-     * @param username the username of the uploader
-     * @return the generated document ID
-     * @throws IOException if upload fails
+     * @param fileInfo     {@link FilePath} containing the hierarchical path segments
+     * @param input        the file content as a MultipartFile
+     * @param status       the initial status to set in the DB
+     * @param loggedInUser the user performing the upload
+     * @return true if both upload and DB persistence succeeded
+     * @throws IOException if Azure upload fails
      */
-    String uploadDocument(MultipartFile file, String folderId, String username) throws IOException;
+    Boolean uploadFile(FilePath fileInfo, MultipartFile input, String status, String loggedInUser) throws IOException;
+
+    /**
+     * Downloads a file content directly from Azure Storage using a FilePath.
+     * Use this when you want to bypass the database lookup entirely.
+     *
+     * @param fileInfo the target path
+     * @return the file bytes as a ByteArrayOutputStream
+     */
+    ByteArrayOutputStream downloadFileDirectly(FilePath fileInfo);
+
+    /**
+     * Downloads a file from Azure Blob Storage by document ID.
+     * Reads the canonical blob_name from the DB, then fetches from Azure.
+     *
+     * @param documentId the UUID stored in filePath[1] at upload time
+     * @return a {@link ByteArrayOutputStream} containing the file contents, or {@code null}
+     */
+    ByteArrayOutputStream downloadFileByDocumentId(String documentId);
+
+    /**
+     * Downloads a file from Azure Blob Storage using the hierarchical FilePath.
+     * Performs a DB lookup first to find the canonical blob name.
+     *
+     * @param fileInfo the target path
+     * @return the file bytes as a ByteArrayOutputStream
+     * @throws IOException if database or storage errors occur
+     */
+    ByteArrayOutputStream downloadFile(FilePath fileInfo) throws IOException;
 
     /**
      * Downloads a document from Azure Blob Storage.
@@ -38,6 +72,14 @@ public interface DocumentService {
      * @return Resource containing the file data
      */
     Resource downloadDocument(String documentId);
+
+    /**
+     * Downloads a document with the filename required by HTTP response headers.
+     *
+     * @param documentId the unique identifier of the document
+     * @return downloaded document content and display filename
+     */
+    DownloadedDocument getDownloadedDocument(String documentId);
 
     /**
      * Retrieves the blob name associated with a document ID.
@@ -87,4 +129,11 @@ public interface DocumentService {
      * @return list of file metadata
      */
     List<FileMetadata> getFilesByFolder(String folderId);
+
+    /**
+     * Synchronizes all blobs from the Azure storage container into the file_metadata table
+     * and the prestage.documents hierarchical tree. This ensures that any files directly 
+     * uploaded to Azure are properly indexed in the database.
+     */
+    void syncAllMetadataFromAzure();
 }

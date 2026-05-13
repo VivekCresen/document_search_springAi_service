@@ -5,6 +5,7 @@ import com.cresensolutions.document_search_springai_service.service.SecuredEnhan
 import com.cresensolutions.document_search_springai_service.service.SecuredUnifiedQueryWorkflow;
 import lombok.RequiredArgsConstructor;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -35,12 +36,18 @@ public class SecuredEnhancedUnifiedWorkflowImpl implements SecuredEnhancedUnifie
                 questionId,
                 userId
         );
+        Map<String, Object> metadata = new LinkedHashMap<>(result);
+        metadata.remove("nlp_answer");
+        metadata.remove("citations");
+        metadata.remove("prefetched_docs");
         chatHistoryService.appendExchange(
                 conversationId,
                 userId,
                 question,
                 result.getOrDefault("standalone_query", "").toString(),
-                questionId
+                result.getOrDefault("nlp_answer", "").toString(),
+                questionId,
+                metadata
         );
         return result;
     }

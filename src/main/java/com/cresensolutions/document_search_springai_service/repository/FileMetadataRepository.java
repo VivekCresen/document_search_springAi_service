@@ -17,6 +17,10 @@ public interface FileMetadataRepository extends JpaRepository<FileMetadata, Inte
             nativeQuery = true)
     Optional<FileMetadata> findByDocumentId(@Param("documentId") String documentId);
 
+    @Query(value = "SELECT * FROM file_metadata WHERE filepath = CAST(:filePathJson AS jsonb)",
+            nativeQuery = true)
+    Optional<FileMetadata> findByFilePathJson(@Param("filePathJson") String filePathJson);
+
     @Query(value = "SELECT * FROM file_metadata WHERE filepath->'filePath'->>0 = :folderId",
             nativeQuery = true)
     List<FileMetadata> findByFolderId(@Param("folderId") String folderId);
