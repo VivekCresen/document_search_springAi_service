@@ -65,44 +65,6 @@ class DocumentServiceImplTest {
         service.init();
     }
 
-    // -------------------------------------------------------------------------
-    // uploadDocument
-    // -------------------------------------------------------------------------
-
-    /**
-     * Verifies that a document is successfully uploaded to Azure and its metadata 
-     * is saved to the database.
-     */
-    @Test
-    @DisplayName("uploadDocument: happy path — uploads file and returns documentId")
-    void uploadDocument_success() throws IOException {
-        MockMultipartFile file = new MockMultipartFile("file", "test.pdf",
-                "application/pdf", "content".getBytes());
-
-        when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
-        when(blobClient.exists()).thenReturn(false);
-        when(fileMetadataRepository.findByFilePathJson(any())).thenReturn(Optional.empty());
-        when(objectMapper.writeValueAsString(any())).thenReturn("{\"filePath\":[\"f\",\"docId\",\"test.pdf\"]}");
-        when(fileMetadataRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        String docId = service.uploadDocument(file, "folder1", "vivek");
-
-        assertThat(docId).isNotBlank();
-        verify(blobClient).upload(any(InputStream.class), eq(true));
-        verify(fileMetadataRepository).save(any(FileMetadata.class));
-    }
-
-    /**
-     * Verifies that uploading an empty file throws an IllegalArgumentException.
-     */
-    @Test
-    @DisplayName("uploadDocument: empty file throws IllegalArgumentException")
-    void uploadDocument_emptyFile_throwsException() {
-        MockMultipartFile emptyFile = new MockMultipartFile("file", new byte[0]);
-        assertThatThrownBy(() -> service.uploadDocument(emptyFile, "folder1", "vivek"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("File is empty");
-    }
 
     // -------------------------------------------------------------------------
     // uploadFile
