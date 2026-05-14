@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,6 +30,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("QueryServiceImpl Tests")
 class QueryServiceImplTest {
+
+    private static final UUID USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     @Mock
     SafeWorkflowManager workflowManager;
@@ -52,7 +55,7 @@ class QueryServiceImplTest {
         reqData.setQuestion("q1");
         reqData.setEmail("test@test.com");
         reqData.setQuestionId(1);
-        reqData.setUserId(1L);
+        reqData.setUserId(USER_ID);
         req.setRequestData(reqData);
 
         Map<String, Object> mockResult = Map.of(
@@ -61,7 +64,7 @@ class QueryServiceImplTest {
                 Common.RESULT_STANDALONE_QUERY, "Standalone q1"
         );
 
-        when(workflowManager.processQuestionAsync("conv1", "q1", "test@test.com", 1, 1L))
+        when(workflowManager.processQuestionAsync("conv1", "q1", "test@test.com", 1, USER_ID))
                 .thenReturn(CompletableFuture.completedFuture(mockResult));
 
         CompletableFuture<EnvelopeResponse> future = service.processQuery(req);

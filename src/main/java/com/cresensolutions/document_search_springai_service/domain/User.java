@@ -9,10 +9,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+
 import java.util.UUID;
+
 
 @Entity
 @Table(name = "users", 
+       schema = "prestage",
        uniqueConstraints = { 
            @UniqueConstraint(columnNames = "username"),
            @UniqueConstraint(columnNames = "email") 
@@ -23,25 +26,28 @@ import java.util.UUID;
 @AllArgsConstructor
 public class User {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue
+    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
     @NotBlank
     @Size(max = 50)
-    @Column(name = "username")
+    @Column(name = "username", nullable = false)
     private String userName;
 
     @NotBlank
     @Size(max = 100)
-    @Column(name = "fullname")
+    @Column(name = "fullname", nullable = false)
     private String fullName;
 
     @NotBlank
     @Size(max = 100)
     @Email
+    @Column(name = "email", nullable = false)
     private String email;
 
     @NotBlank
     @Size(max = 120)
+    @Column(name = "password", nullable = false)
     private String password;
 }

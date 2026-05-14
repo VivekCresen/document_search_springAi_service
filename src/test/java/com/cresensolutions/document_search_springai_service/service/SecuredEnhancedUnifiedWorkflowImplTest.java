@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -21,6 +22,8 @@ import static org.mockito.Mockito.*;
 @DisplayName("SecuredEnhancedUnifiedWorkflowImpl Tests")
 class SecuredEnhancedUnifiedWorkflowImplTest {
 
+    private static final UUID USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+
     @Mock SecuredUnifiedQueryWorkflow baseWorkflow;
     @Mock ChatHistoryService chatHistoryService;
 
@@ -28,19 +31,19 @@ class SecuredEnhancedUnifiedWorkflowImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new SecuredEnhancedUnifiedWorkflowImpl(baseWorkflow, chatHistoryService, "conv1", 99L, 5);
+        service = new SecuredEnhancedUnifiedWorkflowImpl(baseWorkflow, chatHistoryService, "conv1", USER_ID, 5);
     }
 
     @Test
     @DisplayName("processQuestionWithHistory: fetches context, calls workflow, appends exchange")
     void processQuestionWithHistory_happyPath() {
-        when(chatHistoryService.getRecentContext("conv1", 99L, 5)).thenReturn("prior context");
+        when(chatHistoryService.getRecentContext("conv1", USER_ID, 5)).thenReturn("prior context");
         Map<String, Object> workflowResult = Map.of(
                 "standalone_query", "standalone q",
                 "nlp_answer", "The answer",
                 "citations", Map.of()
         );
-        when(baseWorkflow.processQuestion("question", "user", "prior context", "conv1", 1, 99L))
+        when(baseWorkflow.processQuestion("question", "user", "prior context", "conv1", 1, USER_ID))
                 .thenReturn(workflowResult);
 
         Map<String, Object> result = service.processQuestionWithHistory("question", "user", 1);
@@ -50,7 +53,7 @@ class SecuredEnhancedUnifiedWorkflowImplTest {
         // Verify exchange was appended with correct data
         verify(chatHistoryService).appendExchange(
                 eq("conv1"),
-                eq(99L),
+                eq(USER_ID),
                 eq("question"),
                 eq("standalone q"),
                 eq("The answer"),
@@ -62,14 +65,14 @@ class SecuredEnhancedUnifiedWorkflowImplTest {
     @Test
     @DisplayName("processQuestionWithHistory: uses empty string when standalone_query is missing")
     void processQuestionWithHistory_missingStandaloneQuery() {
-        when(chatHistoryService.getRecentContext(anyString(), anyLong(), anyInt())).thenReturn("");
-        when(baseWorkflow.processQuestion(anyString(), anyString(), anyString(), anyString(), anyInt(), anyLong()))
+        when(chatHistoryService.getRecentContext(anyString(), any(java.util.UUID.class), anyInt())).thenReturn("");
+        when(baseWorkflow.processQuestion(anyString(), anyString(), anyString(), anyString(), anyInt(), any(java.util.UUID.class)))
                 .thenReturn(Map.of("nlp_answer", "answer"));
 
         service.processQuestionWithHistory("q", "user", 1);
 
         ArgumentCaptor<String> standaloneCaptor = ArgumentCaptor.forClass(String.class);
-        verify(chatHistoryService).appendExchange(anyString(), anyLong(), anyString(),
+        verify(chatHistoryService).appendExchange(anyString(), any(java.util.UUID.class), anyString(),
                 standaloneCaptor.capture(), anyString(), anyInt(), any());
         assertThat(standaloneCaptor.getValue()).isEmpty();
     }
@@ -77,21 +80,21 @@ class SecuredEnhancedUnifiedWorkflowImplTest {
     @Test
     @DisplayName("processQuestionWithHistory: metadata passed to appendExchange strips sensitive keys")
     void processQuestionWithHistory_metadataStripping() {
-        when(chatHistoryService.getRecentContext(anyString(), anyLong(), anyInt())).thenReturn("");
+        when(chatHistoryService.getRecentContext(anyString(), any(java.util.UUID.class), anyInt())).thenReturn("");
         Map<String, Object> workflowResult = Map.of(
                 "nlp_answer", "ans",
                 "citations", "cite",
                 "prefetched_docs", "docs",
                 "intent", "document"
         );
-        when(baseWorkflow.processQuestion(anyString(), anyString(), anyString(), anyString(), anyInt(), anyLong()))
+        when(baseWorkflow.processQuestion(anyString(), anyString(), anyString(), anyString(), anyInt(), any(java.util.UUID.class)))
                 .thenReturn(workflowResult);
 
         service.processQuestionWithHistory("q", "user", 1);
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> metaCaptor = ArgumentCaptor.forClass(Map.class);
-        verify(chatHistoryService).appendExchange(anyString(), anyLong(), anyString(),
+        verify(chatHistoryService).appendExchange(anyString(), any(java.util.UUID.class), anyString(),
                 anyString(), anyString(), anyInt(), metaCaptor.capture());
 
         Map<String, Object> captured = metaCaptor.getValue();

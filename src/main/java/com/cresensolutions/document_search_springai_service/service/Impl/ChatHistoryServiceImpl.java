@@ -22,11 +22,12 @@ import java.util.*;
 public class ChatHistoryServiceImpl implements ChatHistoryService {
 
     private final ChatHistoryRepository chatHistoryRepository;
+    private final com.cresensolutions.document_search_springai_service.repository.UserRepository userRepository;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     @Override
     @Transactional
-    public String startNewChat(Long userId) {
+    public String startNewChat(UUID userId) {
         String chatId = "chat_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         startNewChatWithId(chatId, userId);
         return chatId;
@@ -34,7 +35,7 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
 
     @Override
     @Transactional
-    public void startNewChatWithId(String chatId, Long userId) {
+    public void startNewChatWithId(String chatId, UUID userId) {
         ChatHistory history = getOrCreateChatHistory(userId);
         Map<String, Object> conversations = history.getConversations();
 
@@ -56,7 +57,7 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
 
     @Override
     @Transactional
-    public void appendMessage(String chatId, Long userId, String messageType, String content, Map<String, Object> metadata) {
+    public void appendMessage(String chatId, UUID userId, String messageType, String content, Map<String, Object> metadata) {
         Map<String, Object> messageEntry = new LinkedHashMap<>();
         messageEntry.put("type", messageType);
         messageEntry.put("content", content);
@@ -70,7 +71,7 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
     @Transactional
     public void appendExchange(
             String chatId,
-            Long userId,
+            UUID userId,
             String userQuestion,
             String standaloneQuery,
             String assistantAnswer,
@@ -94,9 +95,9 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
     @Override
     @Transactional(readOnly = true)
     @SuppressWarnings("unchecked")
-    public String getRecentContext(String chatId, Long userId, int messageLimit) {
-        Long id = userId == null ? -1L : userId;
-        ChatHistory history = chatHistoryRepository.findByUserId(id).orElse(null);
+    public String getRecentContext(String chatId, UUID userId, int messageLimit) {
+        if (userId == null) return "None (This is the first interaction)";
+        ChatHistory history = chatHistoryRepository.findByUserId(userId).orElse(null);
         if (history == null) return "None (This is the first interaction)";
 
         Map<String, Object> conversations = history.getConversations();
@@ -125,7 +126,7 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
     }
 
     @SuppressWarnings("unchecked")
-    private void appendMessageToChat(String chatId, Long userId, Map<String, Object> message) {
+    private void appendMessageToChat(String chatId, UUID userId, Map<String, Object> message) {
         ChatHistory history = getOrCreateChatHistory(userId);
         Map<String, Object> conversations = history.getConversations();
 
@@ -154,13 +155,20 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
         chatHistoryRepository.save(history);
     }
 
-    private ChatHistory getOrCreateChatHistory(Long userId) {
-        Long id = userId == null ? -1L : userId;
-        return chatHistoryRepository.findByUserId(id)
+    private ChatHistory getOrCreateChatHistory(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("Valid User ID required for chat history");
+        }
+        
+        return chatHistoryRepository.findByUserId(userId)
                 .orElseGet(() -> {
+                    com.cresensolutions.document_search_springai_service.domain.User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
                     ChatHistory newHist = ChatHistory.builder()
-                            .userId(id)
-                            .userName("User_" + id) // Default or fetch from user service
+                            .user(user)
+                            .userName(user.getUserName())
+                            .emailId(user.getEmail())
                             .conversations(new LinkedHashMap<>())
                             .totalSessions(0)
                             .totalQaPairs(0)

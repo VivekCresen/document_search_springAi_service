@@ -24,8 +24,13 @@ public class FileInIndex {
     @Column(name = "blob_uri", nullable = false, unique = true)
     private String blobUri;
 
-    @Column(name = "folder_id")
-    private Integer folderId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "folder_id")
+    private PrestageDocument folder;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "indexed_by")
+    private User indexedBy;
 
     @Column(name = "status", nullable = false)
     @Builder.Default

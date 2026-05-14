@@ -6,12 +6,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
-public interface PrestageDocumentRepository extends JpaRepository<PrestageDocument, Integer> {
+public interface PrestageDocumentRepository extends JpaRepository<PrestageDocument, Long> {
 
     @Query("SELECT d.id FROM PrestageDocument d WHERE d.file = false")
-    List<Integer> findAllFolderIds();
+    List<Long> findAllFolderIds();
 
     @Query("SELECT COUNT(d) FROM PrestageDocument d WHERE d.file = false")
     long countFolders();
@@ -25,5 +26,5 @@ public interface PrestageDocumentRepository extends JpaRepository<PrestageDocume
      * @param file   true if searching for a file, false for a folder
      * @return the document if found
      */
-    java.util.Optional<PrestageDocument> findByNameAndParentAndFile(String name, PrestageDocument parent, boolean file);
+    Optional<PrestageDocument> findByNameAndParentAndFile(String name, PrestageDocument parent, boolean file);
 }

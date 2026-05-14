@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -33,6 +34,7 @@ public class UserAccessServiceImpl implements UserAccessService {
     private final DocumentService documentService;
     private final FileInIndexRepository fileInIndexRepository;
     private final PrestageDocumentRepository prestageDocumentRepository;
+    private final com.cresensolutions.document_search_springai_service.repository.UserRepository userRepository;
 
     @Override
     @Cacheable(value = "userRestrictions", key = "#username")
@@ -40,7 +42,12 @@ public class UserAccessServiceImpl implements UserAccessService {
         if (username == null || username.isBlank()) {
             return Collections.emptyList();
         }
-        return userMappingRepository.findRestrictedFolderIds(username).stream()
+        
+        UUID userId = userRepository.findByUserName(username)
+                .map(com.cresensolutions.document_search_springai_service.domain.User::getId)
+                .orElse(null);
+
+        return userMappingRepository.findRestrictedFolderIds(username, userId).stream()
                 .filter(Objects::nonNull)
                 .map(String::valueOf)
                 .toList();
@@ -129,16 +136,25 @@ public class UserAccessServiceImpl implements UserAccessService {
     @Transactional
     @CacheEvict(value = "userRestrictions", key = "#username")
     public void addFolderRestrictions(String username, String[] restrictedFolders) {
+        // Fetch User to link by ID
+        com.cresensolutions.document_search_springai_service.domain.User user = userRepository.findByUserName(username).orElse(null);
+
         // Replace instead of patching so the stored mapping exactly matches the request.
-        userMappingRepository.deleteByUserName(username);
+        if (user != null) {
+            userMappingRepository.deleteByUserId(user.getId());
+        } else {
+            userMappingRepository.deleteByUserName(username);
+        }
+
         if (restrictedFolders != null) {
             for (String folderId : restrictedFolders) {
                 if (folderId == null || folderId.isBlank()) {
                     continue;
                 }
                 userMappingRepository.save(DocumentRepositoryUserMapping.builder()
+                        .user(user)
                         .userName(username)
-                        .foldersAccess(Integer.valueOf(folderId))
+                        .foldersAccess(prestageDocumentRepository.findById(Long.valueOf(folderId)).orElse(null))
                         .build());
             }
         }
@@ -150,7 +166,10 @@ public class UserAccessServiceImpl implements UserAccessService {
     @Transactional
     @CacheEvict(value = "userRestrictions", key = "#username")
     public void removeAllRestrictions(String username) {
-        userMappingRepository.deleteByUserName(username);
+        userRepository.findByUserName(username).ifPresentOrElse(
+                user -> userMappingRepository.deleteByUserId(user.getId()),
+                () -> userMappingRepository.deleteByUserName(username)
+        );
         log.info("Removed all folder restrictions for user {}", username);
     }
 

@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public interface DbSearchHistMessageRepository extends JpaRepository<DbSearchHistMessage, Long> {
@@ -21,7 +22,7 @@ public interface DbSearchHistMessageRepository extends JpaRepository<DbSearchHis
             """, nativeQuery = true)
     List<DbSearchHistMessage> findRecentContext(
             @Param("chatId") String chatId,
-            @Param("userId") Long userId,
+            @Param("userId") UUID userId,
             @Param("limit") int limit
     );
 }

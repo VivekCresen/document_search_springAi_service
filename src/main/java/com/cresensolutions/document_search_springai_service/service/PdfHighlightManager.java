@@ -5,6 +5,7 @@ import com.cresensolutions.document_search_springai_service.dto.HighlightedPdfRe
 
 import java.awt.Color;
 import java.util.List;
+import java.util.UUID;
 
 public interface PdfHighlightManager {
 
@@ -14,7 +15,7 @@ public interface PdfHighlightManager {
             Color color,
             String conversationId,
             Integer questionId,
-            Long userId,
+            UUID userId,
             List<DiPageSpan> diPageSpans
     );
 }

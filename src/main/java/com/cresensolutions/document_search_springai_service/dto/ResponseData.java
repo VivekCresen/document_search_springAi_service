@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -40,7 +41,7 @@ public class ResponseData {
     private String profile;
 
     @JsonProperty("user_id")
-    private Long userId;
+    private UUID userId;
 
     @JsonProperty("response_timeStamp")
     private String responseTimestamp;

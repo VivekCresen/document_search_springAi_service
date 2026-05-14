@@ -1,6 +1,7 @@
 package com.cresensolutions.document_search_springai_service.service;
 
 import com.cresensolutions.document_search_springai_service.domain.ChatHistory;
+import com.cresensolutions.document_search_springai_service.domain.User;
 import com.cresensolutions.document_search_springai_service.repository.ChatHistoryRepository;
 import com.cresensolutions.document_search_springai_service.service.Impl.ChatHistoryServiceImpl;
 import org.junit.jupiter.api.DisplayName;
@@ -21,6 +22,9 @@ import static org.mockito.Mockito.*;
 @DisplayName("ChatHistoryServiceImpl Tests")
 class ChatHistoryServiceImplTest {
 
+    private static final UUID USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID OTHER_USER_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+
     @Mock
     ChatHistoryRepository chatHistoryRepository;
 
@@ -34,11 +38,10 @@ class ChatHistoryServiceImplTest {
     @Test
     @DisplayName("startNewChat: creates a chat_XXXX id and initialises session")
     void startNewChat_returnsChatId() {
-        Long userId = 42L;
-        ChatHistory history = createEmptyHistory(userId);
-        when(chatHistoryRepository.findByUserId(userId)).thenReturn(Optional.of(history));
+        ChatHistory history = createEmptyHistory(USER_ID);
+        when(chatHistoryRepository.findByUserId(USER_ID)).thenReturn(Optional.of(history));
 
-        String chatId = service.startNewChat(userId);
+        String chatId = service.startNewChat(USER_ID);
 
         assertThat(chatId).startsWith("chat_");
         assertThat(chatId).hasSize(17); // "chat_" + 12 chars
@@ -53,25 +56,21 @@ class ChatHistoryServiceImplTest {
     @Test
     @DisplayName("startNewChatWithId: calls save for authenticated user")
     void startNewChatWithId_authenticated() {
-        ChatHistory history = createEmptyHistory(1L);
-        when(chatHistoryRepository.findByUserId(1L)).thenReturn(Optional.of(history));
+        ChatHistory history = createEmptyHistory(USER_ID);
+        when(chatHistoryRepository.findByUserId(USER_ID)).thenReturn(Optional.of(history));
 
-        service.startNewChatWithId("chat_abc123", 1L);
+        service.startNewChatWithId("chat_abc123", USER_ID);
 
         verify(chatHistoryRepository).save(history);
         assertThat(history.getConversations()).containsKey("chat_abc123");
     }
 
     @Test
-    @DisplayName("startNewChatWithId: falls back to fetch with -1 for null userId")
+    @DisplayName("startNewChatWithId: rejects null userId")
     void startNewChatWithId_nullUserId() {
-        ChatHistory history = createEmptyHistory(-1L);
-        when(chatHistoryRepository.findByUserId(-1L)).thenReturn(Optional.of(history));
-
-        service.startNewChatWithId("c1", null);
-
-        verify(chatHistoryRepository).save(history);
-        assertThat(history.getConversations()).containsKey("c1");
+        assertThatThrownBy(() -> service.startNewChatWithId("c1", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Valid User ID required");
     }
 
     // -------------------------------------------------------------------------
@@ -81,10 +80,10 @@ class ChatHistoryServiceImplTest {
     @Test
     @DisplayName("appendMessage: saves message to chat history")
     void appendMessage_savesAndTouches() {
-        ChatHistory history = createHistoryWithChat("c1", 1L);
-        when(chatHistoryRepository.findByUserId(1L)).thenReturn(Optional.of(history));
+        ChatHistory history = createHistoryWithChat("c1", USER_ID);
+        when(chatHistoryRepository.findByUserId(USER_ID)).thenReturn(Optional.of(history));
 
-        service.appendMessage("c1", 1L, "USER", "Hello", Map.of("k", "v"));
+        service.appendMessage("c1", USER_ID, "USER", "Hello", Map.of("k", "v"));
 
         verify(chatHistoryRepository).save(history);
         
@@ -106,10 +105,10 @@ class ChatHistoryServiceImplTest {
     @Test
     @DisplayName("appendExchange: persists USER + ASSISTANT messages together")
     void appendExchange_savesBothMessages() {
-        ChatHistory history = createHistoryWithChat("c1", 2L);
-        when(chatHistoryRepository.findByUserId(2L)).thenReturn(Optional.of(history));
+        ChatHistory history = createHistoryWithChat("c1", OTHER_USER_ID);
+        when(chatHistoryRepository.findByUserId(OTHER_USER_ID)).thenReturn(Optional.of(history));
 
-        service.appendExchange("c1", 2L,
+        service.appendExchange("c1", OTHER_USER_ID,
                 "What is X?", "What is X? standalone",
                 "X is Y.", 7, Map.of("workflow", "document"));
 
@@ -135,10 +134,10 @@ class ChatHistoryServiceImplTest {
     @Test
     @DisplayName("getRecentContext: returns 'None' string when no messages exist")
     void getRecentContext_noMessages_returnsNone() {
-        ChatHistory history = createEmptyHistory(1L);
-        when(chatHistoryRepository.findByUserId(1L)).thenReturn(Optional.of(history));
+        ChatHistory history = createEmptyHistory(USER_ID);
+        when(chatHistoryRepository.findByUserId(USER_ID)).thenReturn(Optional.of(history));
 
-        String ctx = service.getRecentContext("c1", 1L, 10);
+        String ctx = service.getRecentContext("c1", USER_ID, 10);
 
         assertThat(ctx).contains("None");
     }
@@ -146,7 +145,7 @@ class ChatHistoryServiceImplTest {
     @Test
     @DisplayName("getRecentContext: formats turns with [TURN -N | Role] prefix")
     void getRecentContext_withMessages_formatsCorrectly() {
-        ChatHistory history = createHistoryWithChat("c1", 1L);
+        ChatHistory history = createHistoryWithChat("c1", USER_ID);
         
         @SuppressWarnings("unchecked")
         Map<String, Object> chat = (Map<String, Object>) history.getConversations().get("c1");
@@ -155,9 +154,9 @@ class ChatHistoryServiceImplTest {
         
         messages.add(Map.of("question", "Hello?", "answer", "Hi!"));
         
-        when(chatHistoryRepository.findByUserId(1L)).thenReturn(Optional.of(history));
+        when(chatHistoryRepository.findByUserId(USER_ID)).thenReturn(Optional.of(history));
 
-        String ctx = service.getRecentContext("c1", 1L, 10);
+        String ctx = service.getRecentContext("c1", USER_ID, 10);
 
         assertThat(ctx).contains("[TURN -1 | User]: Hello?");
         assertThat(ctx).contains("[TURN -1 | Assistant]: Hi!");
@@ -167,21 +166,33 @@ class ChatHistoryServiceImplTest {
     // Helper Methods
     // -------------------------------------------------------------------------
     
-    private ChatHistory createEmptyHistory(Long userId) {
+    private ChatHistory createEmptyHistory(UUID userId) {
         return ChatHistory.builder()
-                .userId(userId)
+                .user(user(userId))
+                .userName("vivek")
+                .emailId("vivek@example.com")
                 .conversations(new LinkedHashMap<>())
                 .totalSessions(0)
                 .totalQaPairs(0)
                 .build();
     }
     
-    private ChatHistory createHistoryWithChat(String chatId, Long userId) {
+    private ChatHistory createHistoryWithChat(String chatId, UUID userId) {
         ChatHistory history = createEmptyHistory(userId);
         Map<String, Object> chatEntry = new LinkedHashMap<>();
         chatEntry.put("conversation_id", chatId);
         chatEntry.put("messages", new ArrayList<Map<String, Object>>());
         history.getConversations().put(chatId, chatEntry);
         return history;
+    }
+
+    private User user(UUID userId) {
+        return User.builder()
+                .id(userId)
+                .userName("vivek")
+                .fullName("Vivek")
+                .email("vivek@example.com")
+                .password("password")
+                .build();
     }
 }

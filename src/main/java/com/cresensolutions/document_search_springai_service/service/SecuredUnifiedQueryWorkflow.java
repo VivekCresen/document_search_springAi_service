@@ -1,6 +1,7 @@
 package com.cresensolutions.document_search_springai_service.service;
 
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Contract for the base secured query workflow that converts a user question into a response payload.
@@ -16,6 +17,6 @@ public interface SecuredUnifiedQueryWorkflow {
             String conversationContext,
             String conversationId,
             Integer questionId,
-            Long userId
+            UUID userId
     );
 }

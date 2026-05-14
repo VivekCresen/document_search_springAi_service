@@ -76,7 +76,7 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
             String conversationContext,
             String conversationId,
             Integer questionId,
-            Long userId
+            java.util.UUID userId
     ) {
         // Phase 0: Generate a standalone query in parallel with security filter retrieval
         java.util.concurrent.CompletableFuture<String> standaloneQueryFuture = java.util.concurrent.CompletableFuture.supplyAsync(

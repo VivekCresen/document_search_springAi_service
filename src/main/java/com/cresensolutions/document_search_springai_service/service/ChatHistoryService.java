@@ -1,6 +1,7 @@
 package com.cresensolutions.document_search_springai_service.service;
 
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Contract for storing chat sessions and building recent conversation context.
@@ -13,24 +14,24 @@ public interface ChatHistoryService {
     /**
      * Creates a new chat id for the user and persists the backing session.
      */
-    String startNewChat(Long userId);
+    String startNewChat(UUID userId);
 
     /**
      * Ensures a specific chat id exists, useful when the client already created the id.
      */
-    void startNewChatWithId(String chatId, Long userId);
+    void startNewChatWithId(String chatId, UUID userId);
 
     /**
      * Appends one typed chat message with optional metadata.
      */
-    void appendMessage(String chatId, Long userId, String messageType, String content, Map<String, Object> metadata);
+    void appendMessage(String chatId, UUID userId, String messageType, String content, Map<String, Object> metadata);
 
     /**
      * Stores the user question and generated standalone query as one conversation turn.
      */
     void appendExchange(
             String chatId,
-            Long userId,
+            UUID userId,
             String userQuestion,
             String standaloneQuery,
             String assistantAnswer,
@@ -41,5 +42,5 @@ public interface ChatHistoryService {
     /**
      * Builds the recent conversation text that is sent to the standalone query generator.
      */
-    String getRecentContext(String chatId, Long userId, int messageLimit);
+    String getRecentContext(String chatId, UUID userId, int messageLimit);
 }

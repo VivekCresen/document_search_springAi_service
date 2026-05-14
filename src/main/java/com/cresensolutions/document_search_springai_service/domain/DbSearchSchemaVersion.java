@@ -40,6 +40,10 @@ public class DbSearchSchemaVersion {
     @Builder.Default
     private boolean active = true;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private User createdBy;
+
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 }

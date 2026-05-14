@@ -120,7 +120,7 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
             List<SearchResultDocument> prefetchedDocs,
             String conversationId,
             Integer questionId,
-            Long userId
+            java.util.UUID userId
     ) {
         // 1. Apply folder-level and file-stability filters
         List<SearchResultDocument> filteredDocs = filterSearchResults(username, prefetchedDocs);

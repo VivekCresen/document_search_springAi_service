@@ -17,7 +17,7 @@ public class SecuredEnhancedUnifiedWorkflowImpl implements SecuredEnhancedUnifie
     private final SecuredUnifiedQueryWorkflow baseWorkflow;
     private final ChatHistoryService chatHistoryService;
     private final String conversationId;
-    private final Long userId;
+    private final java.util.UUID userId;
     private final int recentMessageLimit;
 
     @Override

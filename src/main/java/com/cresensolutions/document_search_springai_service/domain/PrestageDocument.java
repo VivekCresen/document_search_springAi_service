@@ -30,7 +30,7 @@ public class PrestageDocument {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     /** The name of the file or folder segment. */
     @Column(nullable = false, length = 512)
@@ -45,6 +45,10 @@ public class PrestageDocument {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private PrestageDocument parent;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private User createdBy;
 
     @Column(name = "created_at")
     @Builder.Default

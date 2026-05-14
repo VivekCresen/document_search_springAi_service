@@ -8,11 +8,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface DbSearchHistSessionRepository extends JpaRepository<DbSearchHistSession, Integer> {
+public interface DbSearchHistSessionRepository extends JpaRepository<DbSearchHistSession, Long> {
 
-    Optional<DbSearchHistSession> findByChatIdAndUserId(String chatId, Long userId);
+    Optional<DbSearchHistSession> findByChatIdAndUserId(String chatId, UUID userId);
 
     @Modifying
     @Query(value = """
@@ -20,7 +21,7 @@ public interface DbSearchHistSessionRepository extends JpaRepository<DbSearchHis
             VALUES (:chatId, :userId)
             ON CONFLICT (chat_id, user_id) DO NOTHING
             """, nativeQuery = true)
-    void insertIfMissing(@Param("chatId") String chatId, @Param("userId") Long userId);
+    void insertIfMissing(@Param("chatId") String chatId, @Param("userId") UUID userId);
 
     @Modifying
     @Query(value = """
@@ -32,7 +33,7 @@ public interface DbSearchHistSessionRepository extends JpaRepository<DbSearchHis
             """, nativeQuery = true)
     void touchAndIncrement(
             @Param("chatId") String chatId,
-            @Param("userId") Long userId,
+            @Param("userId") UUID userId,
             @Param("incrementBy") int incrementBy
     );
 }

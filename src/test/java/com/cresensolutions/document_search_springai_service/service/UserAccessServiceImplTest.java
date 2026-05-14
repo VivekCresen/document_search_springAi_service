@@ -5,6 +5,7 @@ import com.cresensolutions.document_search_springai_service.domain.FileInIndex;
 import com.cresensolutions.document_search_springai_service.repository.DocumentRepositoryUserMappingRepository;
 import com.cresensolutions.document_search_springai_service.repository.FileInIndexRepository;
 import com.cresensolutions.document_search_springai_service.repository.PrestageDocumentRepository;
+import com.cresensolutions.document_search_springai_service.repository.UserRepository;
 import com.cresensolutions.document_search_springai_service.service.Impl.UserAccessServiceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ class UserAccessServiceImplTest {
     @Mock DocumentService documentService;
     @Mock FileInIndexRepository fileInIndexRepository;
     @Mock PrestageDocumentRepository prestageDocumentRepository;
+    @Mock UserRepository userRepository;
 
     @InjectMocks UserAccessServiceImpl service;
 
@@ -46,7 +48,7 @@ class UserAccessServiceImplTest {
     @Test
     @DisplayName("getRestrictedFolders: maps Integer folder IDs to String list")
     void getRestrictedFolders_returnsMappedIds() {
-        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(List.of(1, 5, 9));
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of(1L, 5L, 9L));
 
         List<String> result = service.getRestrictedFolders("vivek");
 
@@ -56,7 +58,7 @@ class UserAccessServiceImplTest {
     @Test
     @DisplayName("getRestrictedFolders: filters out null folder IDs")
     void getRestrictedFolders_filtersNulls() {
-        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(java.util.Arrays.asList(1, null, 3));
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(java.util.Arrays.asList(1L, null, 3L));
 
         List<String> result = service.getRestrictedFolders("vivek");
 
@@ -70,14 +72,14 @@ class UserAccessServiceImplTest {
     @Test
     @DisplayName("hasAccessToFolder: returns true if folder NOT restricted")
     void hasAccessToFolder_notRestricted() {
-        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(List.of(5));
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of(5L));
         assertThat(service.hasAccessToFolder("vivek", "10")).isTrue();
     }
 
     @Test
     @DisplayName("hasAccessToFolder: returns false if folder IS restricted")
     void hasAccessToFolder_restricted() {
-        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(List.of(5));
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of(5L));
         assertThat(service.hasAccessToFolder("vivek", "5")).isFalse();
     }
 
@@ -88,14 +90,14 @@ class UserAccessServiceImplTest {
     @Test
     @DisplayName("hasAccessToAnyFolder: true when at least one folder is accessible")
     void hasAccessToAnyFolder_oneAccessible() {
-        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(List.of(5));
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of(5L));
         assertThat(service.hasAccessToAnyFolder("vivek", Set.of("5", "10"))).isTrue();
     }
 
     @Test
     @DisplayName("hasAccessToAnyFolder: false when all folders restricted")
     void hasAccessToAnyFolder_allRestricted() {
-        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(List.of(5, 10));
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of(5L, 10L));
         assertThat(service.hasAccessToAnyFolder("vivek", Set.of("5", "10"))).isFalse();
     }
 
@@ -117,7 +119,7 @@ class UserAccessServiceImplTest {
     @Test
     @DisplayName("createSearchFilter: builds OData filter from restrictions and unstable URIs")
     void createSearchFilter_buildsODataFilter() {
-        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(List.of(3));
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of(3L));
         when(fileInIndexRepository.findUnstableBlobUris()).thenReturn(List.of("blob://bad"));
 
         String filter = service.createSearchFilter("vivek");
@@ -130,7 +132,7 @@ class UserAccessServiceImplTest {
     @Test
     @DisplayName("createSearchFilter: returns empty string when no restrictions")
     void createSearchFilter_noRestrictions_emptyFilter() {
-        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(List.of());
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of());
         when(fileInIndexRepository.findUnstableBlobUris()).thenReturn(List.of());
 
         assertThat(service.createSearchFilter("vivek")).isEmpty();
@@ -139,7 +141,7 @@ class UserAccessServiceImplTest {
     @Test
     @DisplayName("createSearchFilter: escapes single quotes in OData values")
     void createSearchFilter_escapesQuotes() {
-        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(List.of());
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of());
         when(fileInIndexRepository.findUnstableBlobUris()).thenReturn(List.of("blob://it's-bad"));
 
         String filter = service.createSearchFilter("vivek");
@@ -161,7 +163,7 @@ class UserAccessServiceImplTest {
     @Test
     @DisplayName("filterSearchResults: removes restricted folder results")
     void filterSearchResults_removesRestricted() {
-        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(List.of(5));
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of(5L));
         when(fileInIndexRepository.findUnstableBlobUris()).thenReturn(List.of());
 
         List<Map<String, Object>> results = List.of(
@@ -178,7 +180,7 @@ class UserAccessServiceImplTest {
     @Test
     @DisplayName("filterSearchResults: removes unstable URI results")
     void filterSearchResults_removesUnstableUris() {
-        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(List.of());
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of());
         when(fileInIndexRepository.findUnstableBlobUris()).thenReturn(List.of("blob://bad"));
 
         List<Map<String, Object>> results = List.of(
@@ -231,7 +233,7 @@ class UserAccessServiceImplTest {
     @Test
     @DisplayName("filterAccessibleFolders: excludes restricted folder IDs")
     void filterAccessibleFolders_filtersOut() {
-        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(List.of(5, 9));
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of(5L, 9L));
 
         List<String> result = service.filterAccessibleFolders("vivek", List.of("1", "5", "9", "10"));
 
@@ -245,7 +247,7 @@ class UserAccessServiceImplTest {
     @Test
     @DisplayName("getAccessibleStableFiles: delegates to documentService with restricted folder list")
     void getAccessibleStableFiles_delegates() {
-        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(List.of(3));
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of(3L));
         List<FileInIndex> expected = List.of(FileInIndex.builder().blobUri("ok").build());
         when(documentService.getAccessibleStableFiles(List.of("3"))).thenReturn(expected);
 

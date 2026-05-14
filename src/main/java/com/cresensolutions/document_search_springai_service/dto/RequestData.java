@@ -31,5 +31,5 @@ public class RequestData {
     private String profile = "dev";
 
     @JsonProperty("user_id")
-    private Long userId;
+    private java.util.UUID userId;
 }

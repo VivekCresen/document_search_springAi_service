@@ -14,30 +14,30 @@ public interface FileInIndexRepository extends JpaRepository<FileInIndex, Long> 
 
     Optional<FileInIndex> findByBlobUri(String blobUri);
 
-    List<FileInIndex> findByFolderId(Integer folderId);
+    List<FileInIndex> findByFolderId(Long folderId);
 
     List<FileInIndex> findByStatus(String status);
 
     @Query("SELECT f FROM FileInIndex f WHERE f.status = 'stable'")
     List<FileInIndex> findAllStableFiles();
 
-    @Query("SELECT f FROM FileInIndex f WHERE f.folderId = :folderId AND f.status = 'stable'")
-    List<FileInIndex> findStableFilesByFolderId(@Param("folderId") Integer folderId);
+    @Query("SELECT f FROM FileInIndex f WHERE f.folder.id = :folderId AND f.status = 'stable'")
+    List<FileInIndex> findStableFilesByFolderId(@Param("folderId") Long folderId);
 
     @Query("""
             SELECT f
             FROM FileInIndex f
             WHERE f.status = 'stable'
-              AND (f.folderId IS NULL OR f.folderId NOT IN :restrictedFolders)
+              AND (f.folder IS NULL OR f.folder.id NOT IN :restrictedFolders)
             """)
-    List<FileInIndex> findAccessibleStableFiles(@Param("restrictedFolders") List<Integer> restrictedFolders);
+    List<FileInIndex> findAccessibleStableFiles(@Param("restrictedFolders") List<Integer> restrictedFolderIds);
 
     @Query("SELECT f.blobUri FROM FileInIndex f WHERE f.status <> 'stable'")
     List<String> findUnstableBlobUris();
 
-    @Query("SELECT f FROM FileInIndex f WHERE f.folderId IN :folderIds AND f.status = 'stable'")
-    List<FileInIndex> findStableFilesByFolderIds(@Param("folderIds") List<Integer> folderIds);
+    @Query("SELECT f FROM FileInIndex f WHERE f.folder.id IN :folderIds AND f.status = 'stable'")
+    List<FileInIndex> findStableFilesByFolderIds(@Param("folderIds") List<Long> folderIds);
 
-    @Query("SELECT COUNT(f) FROM FileInIndex f WHERE f.folderId = :folderId AND f.status = 'stable'")
-    long countStableFilesByFolderId(@Param("folderId") Integer folderId);
+    @Query("SELECT COUNT(f) FROM FileInIndex f WHERE f.folder.id = :folderId AND f.status = 'stable'")
+    long countStableFilesByFolderId(@Param("folderId") Long folderId);
 }

@@ -20,6 +20,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,6 +30,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SecuredRagPipelineImpl Tests")
 class SecuredRagPipelineImplTest {
+
+    private static final UUID USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     @Mock private UserAccessService userAccessService;
     @Mock private ConsolidatedCitationManager citationManager;
@@ -69,11 +72,11 @@ class SecuredRagPipelineImplTest {
         when(userAccessService.getUnstableFileUris()).thenReturn(Collections.emptyList());
         
         mockChatClientResponse("{\"answer\": \"Compliance is essential.\", \"raw_extractions\": []}");
-        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), anyLong()))
+        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), any(java.util.UUID.class)))
                 .thenReturn(Map.of("1", Map.of("file_name", "doc1.pdf")));
 
         // Act
-        DocumentAnswer result = service.answerQuestionWithSecurity(question, username, prefetchedDocs, "conv1", 1, 123L);
+        DocumentAnswer result = service.answerQuestionWithSecurity(question, username, prefetchedDocs, "conv1", 1, USER_ID);
 
         // Assert
         assertThat(result.getAnswer()).isEqualTo("Compliance is essential.");
@@ -95,7 +98,7 @@ class SecuredRagPipelineImplTest {
         when(userAccessService.getUnstableFileUris()).thenReturn(Collections.emptyList());
 
         // Act
-        DocumentAnswer result = service.answerQuestionWithSecurity(question, username, prefetchedDocs, "conv1", 1, 123L);
+        DocumentAnswer result = service.answerQuestionWithSecurity(question, username, prefetchedDocs, "conv1", 1, USER_ID);
 
         // Assert
         assertThat(result.getAnswer()).isEqualTo(Common.NO_ACCESSIBLE_DOCUMENTS_RESPONSE);
@@ -122,7 +125,7 @@ class SecuredRagPipelineImplTest {
         when(requestSpec.call()).thenThrow(new RuntimeException("LLM down"));
 
         // Act
-        DocumentAnswer result = service.answerQuestionWithSecurity(question, username, prefetchedDocs, "conv1", 1, 123L);
+        DocumentAnswer result = service.answerQuestionWithSecurity(question, username, prefetchedDocs, "conv1", 1, USER_ID);
 
         // Assert
         // The implementation recovers from LLM errors by returning a fallback JSON message.
@@ -144,11 +147,11 @@ class SecuredRagPipelineImplTest {
 
         mockChatClientResponse("{\"answer\": \"Ok\", \"raw_extractions\": []}");
         // Trigger exception in citation manager to hit the outer catch block
-        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), anyLong()))
+        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), any(java.util.UUID.class)))
                 .thenThrow(new RuntimeException("Citation failure"));
 
         // Act
-        DocumentAnswer result = service.answerQuestionWithSecurity(question, username, prefetchedDocs, "conv1", 1, 123L);
+        DocumentAnswer result = service.answerQuestionWithSecurity(question, username, prefetchedDocs, "conv1", 1, USER_ID);
 
         // Assert
         assertThat(result.getAnswer()).isEqualTo(Common.DOCUMENT_RESPONSE_ERROR);
@@ -168,11 +171,11 @@ class SecuredRagPipelineImplTest {
         when(userAccessService.getUnstableFileUris()).thenReturn(Collections.emptyList());
         
         mockChatClientResponse("Not a JSON response");
-        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), anyLong()))
+        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), any(java.util.UUID.class)))
                 .thenReturn(Collections.emptyMap());
 
         // Act
-        DocumentAnswer result = service.answerQuestionWithSecurity(question, username, prefetchedDocs, "conv1", 1, 123L);
+        DocumentAnswer result = service.answerQuestionWithSecurity(question, username, prefetchedDocs, "conv1", 1, USER_ID);
 
         // Assert
         assertThat(result.getAnswer()).isEqualTo("Not a JSON response");
@@ -210,10 +213,10 @@ class SecuredRagPipelineImplTest {
         when(userAccessService.getUnstableFileUris()).thenReturn(List.of("blob://a.pdf"));
 
         mockChatClientResponse("{\"answer\": \"Only B.\", \"raw_extractions\": []}");
-        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), anyLong()))
+        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), any(java.util.UUID.class)))
                 .thenReturn(Map.of());
 
-        DocumentAnswer result = service.answerQuestionWithSecurity(question, username, prefetchedDocs, "conv1", 1, 1L);
+        DocumentAnswer result = service.answerQuestionWithSecurity(question, username, prefetchedDocs, "conv1", 1, USER_ID);
         assertThat(result.getAnswer()).isEqualTo("Only B.");
     }
 
@@ -223,7 +226,7 @@ class SecuredRagPipelineImplTest {
         lenient().when(userAccessService.getRestrictedFolders(anyString())).thenReturn(Collections.emptyList());
         lenient().when(userAccessService.getUnstableFileUris()).thenReturn(Collections.emptyList());
 
-        DocumentAnswer result = service.answerQuestionWithSecurity("q", "user", null, "c", 1, 1L);
+        DocumentAnswer result = service.answerQuestionWithSecurity("q", "user", null, "c", 1, USER_ID);
         assertThat(result.getAnswer()).isEqualTo(Common.NO_ACCESSIBLE_DOCUMENTS_RESPONSE);
     }
 
@@ -244,10 +247,10 @@ class SecuredRagPipelineImplTest {
         when(requestSpec.call()).thenReturn(callSpec);
         when(callSpec.content()).thenReturn(null);  // null content
 
-        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), anyLong()))
+        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), any(java.util.UUID.class)))
                 .thenReturn(Collections.emptyMap());
 
-        DocumentAnswer result = service.answerQuestionWithSecurity("q", username, docs, "c", 1, 1L);
+        DocumentAnswer result = service.answerQuestionWithSecurity("q", username, docs, "c", 1, USER_ID);
         // null content → uses NO_LLM_CONFIGURED_JSON fallback → parsed as raw answer
         assertThat(result.getAnswer()).isNotBlank();
     }
@@ -262,7 +265,7 @@ class SecuredRagPipelineImplTest {
         when(userAccessService.getRestrictedFolders(username)).thenReturn(Collections.emptyList());
         when(userAccessService.getUnstableFileUris()).thenReturn(Collections.emptyList());
 
-        DocumentAnswer result = service.answerQuestionWithSecurity("q", username, docs, "c", 1, 1L);
+        DocumentAnswer result = service.answerQuestionWithSecurity("q", username, docs, "c", 1, USER_ID);
         assertThat(result.getAnswer()).isEqualTo(Common.NO_ACCESSIBLE_DOCUMENTS_RESPONSE);
     }
 
@@ -285,10 +288,10 @@ class SecuredRagPipelineImplTest {
             }
             """;
         mockChatClientResponse(llmJson);
-        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), anyLong()))
+        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), any(java.util.UUID.class)))
                 .thenReturn(Map.of("1", Map.of("source", "manual.pdf")));
 
-        DocumentAnswer result = service.answerQuestionWithSecurity("q", username, docs, "c", 1, 1L);
+        DocumentAnswer result = service.answerQuestionWithSecurity("q", username, docs, "c", 1, USER_ID);
 
         assertThat(result.getAnswer()).isEqualTo("Good answer");
         assertThat(result.getCitations()).containsKey("1");
@@ -314,12 +317,11 @@ class SecuredRagPipelineImplTest {
             }
             """;
         mockChatClientResponse(llmJson);
-        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), anyLong()))
+        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), any(java.util.UUID.class)))
                 .thenReturn(Collections.emptyMap());
 
-        DocumentAnswer result = service.answerQuestionWithSecurity("q", username, docs, "c", 1, 1L);
+        DocumentAnswer result = service.answerQuestionWithSecurity("q", username, docs, "c", 1, USER_ID);
         // No validated extractions → empty citations
         assertThat(result.getCitations()).isEmpty();
     }
 }
-

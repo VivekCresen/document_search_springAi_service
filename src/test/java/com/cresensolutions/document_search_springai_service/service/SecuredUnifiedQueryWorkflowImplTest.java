@@ -21,6 +21,7 @@ import org.springframework.core.task.SyncTaskExecutor;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -29,6 +30,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SecuredUnifiedQueryWorkflowImpl Tests")
 class SecuredUnifiedQueryWorkflowImplTest {
+
+    private static final UUID USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     @Mock StandaloneQueryService standaloneQueryService;
     @Mock SecuredIntentClassifier securedIntentClassifier;
@@ -82,10 +85,10 @@ class SecuredUnifiedQueryWorkflowImplTest {
     void processQuestion_documentPath() {
         stubPhase0And1(Common.INTENT_DOCUMENT);
         DocumentAnswer docAnswer = new DocumentAnswer("RAG answer", Map.of());
-        when(securedRagPipeline.answerQuestionWithSecurity(anyString(), anyString(), anyList(), anyString(), anyInt(), anyLong()))
+        when(securedRagPipeline.answerQuestionWithSecurity(anyString(), anyString(), anyList(), anyString(), anyInt(), any(java.util.UUID.class)))
                 .thenReturn(docAnswer);
 
-        Map<String, Object> result = service.processQuestion("q", "user", "", "conv1", 1, 1L);
+        Map<String, Object> result = service.processQuestion("q", "user", "", "conv1", 1, USER_ID);
 
         assertThat(result.get(Common.RESULT_NLP_ANSWER)).isEqualTo("RAG answer");
         assertThat(result.get(Common.RESULT_INTERNAL_TYPE)).isEqualTo(Common.TEXT_RESPONSE_TYPE);
@@ -98,7 +101,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
         stubPhase0And1(Common.INTENT_GENERAL);
         when(chatClient.prompt().user(anyString()).call().content()).thenReturn("Hello!");
 
-        Map<String, Object> result = service.processQuestion("hi", "user", "", "conv1", 1, 1L);
+        Map<String, Object> result = service.processQuestion("hi", "user", "", "conv1", 1, USER_ID);
 
         assertThat(result.get(Common.RESULT_NLP_ANSWER)).isEqualTo("Hello!");
         assertThat(result.get(Common.WORKFLOW)).isEqualTo(Common.WORKFLOW_GENERAL);
@@ -110,7 +113,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
         stubPhase0And1(Common.INTENT_GENERAL);
         when(chatClient.prompt().user(anyString()).call().content()).thenReturn(null);
 
-        Map<String, Object> result = service.processQuestion("hi", "user", "", "conv1", 1, 1L);
+        Map<String, Object> result = service.processQuestion("hi", "user", "", "conv1", 1, USER_ID);
         assertThat(result.get(Common.RESULT_NLP_ANSWER)).isEqualTo(Common.GENERAL_GREETING_RESPONSE);
     }
 
@@ -120,7 +123,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
         stubPhase0And1(Common.INTENT_GENERAL);
         when(chatClient.prompt().user(anyString()).call().content()).thenThrow(new RuntimeException("error"));
 
-        Map<String, Object> result = service.processQuestion("hi", "user", "", "conv1", 1, 1L);
+        Map<String, Object> result = service.processQuestion("hi", "user", "", "conv1", 1, USER_ID);
         assertThat(result.get(Common.RESULT_NLP_ANSWER)).isEqualTo(Common.GENERAL_GREETING_RESPONSE);
     }
 
@@ -144,7 +147,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
         when(sqlExecutorService.execute(anyString())).thenReturn(execResult);
         when(resultsToNlpService.generateNlpAnswer(anyString(), anyList(), anyBoolean())).thenReturn("Found 1 order");
 
-        Map<String, Object> result = service.processQuestion("show orders", "user", "", "conv1", 1, 1L);
+        Map<String, Object> result = service.processQuestion("show orders", "user", "", "conv1", 1, USER_ID);
 
         assertThat(result.get(Common.RESULT_NLP_ANSWER)).isEqualTo("Found 1 order");
         assertThat(result.get(Common.WORKFLOW)).isEqualTo(Common.WORKFLOW_DATABASE);
@@ -156,7 +159,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
         stubPhase0And1(Common.INTENT_DATABASE);
         when(flatSourceClassifier.classify(anyString())).thenReturn(null);
 
-        Map<String, Object> result = service.processQuestion("q", "user", "", "conv1", 1, 1L);
+        Map<String, Object> result = service.processQuestion("q", "user", "", "conv1", 1, USER_ID);
 
         assertThat(result.get(Common.RESULT_SUCCESS)).isEqualTo(false);
         assertThat(result.get(Common.RESULT_NLP_ANSWER).toString()).contains("No database view");
@@ -176,7 +179,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
                 .build();
         when(sqlConverterService.generateSql(anyString(), anyString(), anyString(), any())).thenReturn(sqlResult);
 
-        Map<String, Object> result = service.processQuestion("orders", "user", "", "conv1", 1, 1L);
+        Map<String, Object> result = service.processQuestion("orders", "user", "", "conv1", 1, USER_ID);
         assertThat(result.get(Common.RESULT_NLP_ANSWER)).isEqualTo("Do you mean today or this week?");
     }
 
@@ -196,7 +199,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
         when(sqlExecutorService.execute(anyString()))
                 .thenReturn(SqlExecutionResult.failure("syntax error"));
 
-        Map<String, Object> result = service.processQuestion("q", "user", "", "conv1", 1, 1L);
+        Map<String, Object> result = service.processQuestion("q", "user", "", "conv1", 1, USER_ID);
         assertThat(result.get(Common.RESULT_SUCCESS)).isEqualTo(false);
     }
 
@@ -225,7 +228,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
         when(sqlExecutorService.execute(anyString())).thenReturn(execResult);
         when(resultsToNlpService.generateTableIntro(anyString(), anyInt())).thenReturn("Here are the records.");
 
-        Map<String, Object> result = service.processQuestion("list all", "user", "", "conv1", 1, 1L);
+        Map<String, Object> result = service.processQuestion("list all", "user", "", "conv1", 1, USER_ID);
         assertThat(result.get(Common.RESULT_INTERNAL_TYPE)).isEqualTo(Common.TABLE_RESPONSE_TYPE);
         assertThat(result.get(Common.RESULT_TEXT_PAYLOAD)).isEqualTo("Here are the records.");
     }

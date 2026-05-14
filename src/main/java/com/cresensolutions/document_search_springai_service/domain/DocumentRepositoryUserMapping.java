@@ -20,11 +20,16 @@ public class DocumentRepositoryUserMapping {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
     @Column(name = "user_name", nullable = false, length = 200)
     private String userName;
 
-    @Column(name = "folders_access")
-    private Integer foldersAccess;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "folders_access")
+    private PrestageDocument foldersAccess;
 
     @Column(name = "created_at")
     @Builder.Default

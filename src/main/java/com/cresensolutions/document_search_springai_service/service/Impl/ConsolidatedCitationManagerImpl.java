@@ -43,7 +43,7 @@ public class ConsolidatedCitationManagerImpl implements ConsolidatedCitationMana
             List<RagSourceDocument> sourceDocuments,
             String conversationId,
             Integer questionId,
-            Long userId
+            java.util.UUID userId
     ) {
         Map<String, RagSourceDocument> docsBySource = sourceDocuments.stream()
                 .collect(Collectors.toMap(RagSourceDocument::source, doc -> doc, (first, second) -> first, LinkedHashMap::new));

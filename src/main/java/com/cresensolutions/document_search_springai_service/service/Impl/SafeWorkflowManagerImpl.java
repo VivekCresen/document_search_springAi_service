@@ -47,7 +47,7 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
             String question,
             String username,
             Integer questionId,
-            Long userId
+            java.util.UUID userId
     ) {
         SecuredEnhancedUnifiedWorkflow workflow = getOrCreateConversation(conversationId, userId);
         return workflow.processQuestionWithHistory(question, username, questionId);
@@ -59,7 +59,7 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
             String question,
             String username,
             Integer questionId,
-            Long userId
+            java.util.UUID userId
     ) {
         return CompletableFuture.supplyAsync(
                         () -> processQuestion(conversationId, question, username, questionId, userId),
@@ -69,7 +69,7 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
     }
 
     @Override
-    public SecuredEnhancedUnifiedWorkflow getOrCreateConversation(String conversationId, Long userId) {
+    public SecuredEnhancedUnifiedWorkflow getOrCreateConversation(String conversationId, java.util.UUID userId) {
         String cacheKey = cacheKey(conversationId, userId);
         CachedConversation cached = activeConversations.compute(cacheKey, (key, existing) -> {
             if (existing != null && !existing.isExpired(workflowProperty.getConversationTimeoutSeconds())) {
@@ -104,9 +104,9 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
         );
     }
 
-    private String cacheKey(String conversationId, Long userId) {
+    private String cacheKey(String conversationId, java.util.UUID userId) {
         // Include user id so two users cannot share the same cached conversation accidentally.
-        return conversationId + "::" + (userId == null ? "anonymous" : userId);
+        return conversationId + "::" + (userId == null ? "anonymous" : userId.toString());
     }
 
     private void cleanupOccasionally() {

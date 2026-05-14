@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.awt.Color;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -28,6 +29,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PdfHighlightManagerImpl Tests")
 class PdfHighlightManagerImplTest {
+
+    private static final UUID USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     @Mock BlobServiceClient blobServiceClient;
     @Mock BlobContainerClient blobContainerClient;
@@ -48,7 +51,7 @@ class PdfHighlightManagerImplTest {
     @DisplayName("highlightMultiplePassagesInPdf: returns empty result for null/blank blobName")
     void highlight_nullBlobName_returnsEmpty() {
         HighlightedPdfResult result = service.highlightMultiplePassagesInPdf(
-                null, List.of("text"), Color.YELLOW, "conv", 1, 1L, null);
+                null, List.of("text"), Color.YELLOW, "conv", 1, USER_ID, null);
         assertThat(result.getDownloadLink()).isEmpty();
         assertThat(result.getViewLink()).isEmpty();
         assertThat(result.getHighlightedPages()).isEmpty();
@@ -58,7 +61,7 @@ class PdfHighlightManagerImplTest {
     @DisplayName("highlightMultiplePassagesInPdf: returns empty result for blank blobName")
     void highlight_blankBlobName_returnsEmpty() {
         HighlightedPdfResult result = service.highlightMultiplePassagesInPdf(
-                "   ", List.of("text"), Color.YELLOW, "conv", 1, 1L, null);
+                "   ", List.of("text"), Color.YELLOW, "conv", 1, USER_ID, null);
         assertThat(result.getDownloadLink()).isEmpty();
     }
 
@@ -68,7 +71,7 @@ class PdfHighlightManagerImplTest {
         when(blobClient.downloadContent()).thenThrow(new RuntimeException("Blob not found"));
 
         HighlightedPdfResult result = service.highlightMultiplePassagesInPdf(
-                "folder/file.pdf", List.of("some passage"), Color.YELLOW, "conv", 1, 1L, Collections.emptyList());
+                "folder/file.pdf", List.of("some passage"), Color.YELLOW, "conv", 1, USER_ID, Collections.emptyList());
 
         assertThat(result.getDownloadLink()).isEmpty();
         assertThat(result.getHighlightedPages()).isEmpty();
@@ -90,7 +93,7 @@ class PdfHighlightManagerImplTest {
                 "folder/file.pdf",
                 List.of("Hello World"),
                 Color.YELLOW,
-                "conv1", 1, 99L,
+                "conv1", 1, USER_ID,
                 Collections.emptyList()
         );
 
@@ -119,7 +122,7 @@ class PdfHighlightManagerImplTest {
                 "folder/doc.pdf",
                 List.of("Hello World"),
                 Color.CYAN,
-                "conv1", 2, 5L,
+                "conv1", 2, USER_ID,
                 List.of(span)
         );
 
@@ -137,7 +140,7 @@ class PdfHighlightManagerImplTest {
                 "folder%2Ffile%20name.pdf",
                 List.of("text"),
                 Color.YELLOW,
-                "conv", 1, 1L,
+                "conv", 1, USER_ID,
                 null
         );
         assertThat(result.getDownloadLink()).isEmpty();
@@ -155,7 +158,7 @@ class PdfHighlightManagerImplTest {
 
         // Passing null color should not throw
         HighlightedPdfResult result = service.highlightMultiplePassagesInPdf(
-                "file.pdf", List.of("Hello"), null, "conv", 1, 1L, null);
+                "file.pdf", List.of("Hello"), null, "conv", 1, USER_ID, null);
 
         assertThat(result).isNotNull();
     }

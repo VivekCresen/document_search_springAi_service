@@ -11,7 +11,7 @@ import java.util.Optional;
 
 
 @Repository
-public interface FileMetadataRepository extends JpaRepository<FileMetadata, Integer> {
+public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long> {
 
     @Query(value = "SELECT * FROM file_metadata WHERE filepath->'filePath'->>1 = :documentId",
             nativeQuery = true)

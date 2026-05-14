@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.awt.Color;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -22,6 +23,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ConsolidatedCitationManagerImpl Tests")
 class ConsolidatedCitationManagerImplTest {
+
+    private static final UUID USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     @Mock
     PdfHighlightManager pdfHighlightManager;
@@ -36,7 +39,7 @@ class ConsolidatedCitationManagerImplTest {
         RagSourceDocument sourceDoc = RagSourceDocument.builder().source("file2.pdf").build();
 
         Map<String, Object> citations = service.createCitationsFromPassages(
-                List.of(passage), List.of(sourceDoc), "chat1", 1, 1L);
+                List.of(passage), List.of(sourceDoc), "chat1", 1, USER_ID);
 
         assertThat(citations).isEmpty();
         verifyNoInteractions(pdfHighlightManager);
@@ -60,12 +63,12 @@ class ConsolidatedCitationManagerImplTest {
                 any(Color.class),
                 eq("chat1"),
                 eq(1),
-                eq(1L),
+                eq(USER_ID),
                 anyList()
         )).thenReturn(mockResult);
 
         Map<String, Object> citations = service.createCitationsFromPassages(
-                List.of(passage), List.of(sourceDoc), "chat1", 1, 1L);
+                List.of(passage), List.of(sourceDoc), "chat1", 1, USER_ID);
 
         assertThat(citations).hasSize(1);
         
@@ -94,16 +97,16 @@ class ConsolidatedCitationManagerImplTest {
                 any(Color.class),
                 anyString(),
                 anyInt(),
-                anyLong(),
+                any(java.util.UUID.class),
                 any()
         )).thenReturn(mockResult);
 
         Map<String, Object> citations = service.createCitationsFromPassages(
-                List.of(passage), List.of(sourceDoc), "chat1", 1, 1L);
+                List.of(passage), List.of(sourceDoc), "chat1", 1, USER_ID);
 
         assertThat(citations).hasSize(1);
         verify(pdfHighlightManager).highlightMultiplePassagesInPdf(
-                eq("fallback/path.pdf"), anyList(), any(), anyString(), anyInt(), anyLong(), any());
+                eq("fallback/path.pdf"), anyList(), any(), anyString(), anyInt(), any(java.util.UUID.class), any());
     }
 
     @Test
@@ -119,7 +122,7 @@ class ConsolidatedCitationManagerImplTest {
         when(pdfHighlightManager.highlightMultiplePassagesInPdf(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(mockResult);
 
-        service.createCitationsFromPassages(List.of(p1, p2), List.of(s1, s2), "chat1", 1, 1L);
+        service.createCitationsFromPassages(List.of(p1, p2), List.of(s1, s2), "chat1", 1, USER_ID);
 
         verify(pdfHighlightManager).highlightMultiplePassagesInPdf(eq("path1"), any(), eq(Color.YELLOW), any(), any(), any(), any());
         verify(pdfHighlightManager).highlightMultiplePassagesInPdf(eq("path2"), any(), eq(new Color(128, 255, 128)), any(), any(), any(), any());

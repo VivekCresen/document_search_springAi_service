@@ -14,7 +14,7 @@ import java.time.OffsetDateTime;
  * file properties, and processing status.
  */
 @Entity
-@Table(name = "file_metadata")
+@Table(name = "file_metadata", schema = "prestage")
 @Data
 @Builder
 @NoArgsConstructor
@@ -24,12 +24,16 @@ public class FileMetadata {
     /** Primary key for the file metadata record */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     /** File path information stored as JSONB for flexible structure */
     @Type(JsonBinaryType.class)
     @Column(columnDefinition = "jsonb", nullable = false)
     private FilePath filepath;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 
     /** Username of the user who uploaded the file */
     @Column(name = "created_by", nullable = false)

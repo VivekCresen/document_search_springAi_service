@@ -1,6 +1,7 @@
 package com.cresensolutions.document_search_springai_service.service;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -16,7 +17,7 @@ public interface SafeWorkflowManager {
             String question,
             String username,
             Integer questionId,
-            Long userId
+            UUID userId
     );
 
     /**
@@ -27,13 +28,13 @@ public interface SafeWorkflowManager {
             String question,
             String username,
             Integer questionId,
-            Long userId
+            UUID userId
     );
 
     /**
      * Returns the active workflow for a conversation or creates one when missing/expired.
      */
-    SecuredEnhancedUnifiedWorkflow getOrCreateConversation(String conversationId, Long userId);
+    SecuredEnhancedUnifiedWorkflow getOrCreateConversation(String conversationId, UUID userId);
 
     /**
      * Returns lightweight runtime stats for health and metrics endpoints.

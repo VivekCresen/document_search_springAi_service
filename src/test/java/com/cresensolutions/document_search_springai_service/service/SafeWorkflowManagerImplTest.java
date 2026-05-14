@@ -12,6 +12,7 @@ import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -28,6 +29,9 @@ import static org.mockito.Mockito.lenient;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SafeWorkflowManagerImpl Tests")
 class SafeWorkflowManagerImplTest {
+
+    private static final UUID USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID OTHER_USER_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     @Mock
     SecuredUnifiedQueryWorkflow baseWorkflow;
@@ -52,33 +56,33 @@ class SafeWorkflowManagerImplTest {
     @Test
     @DisplayName("getOrCreateConversation: creates new workflow and invokes chatHistoryService")
     void getOrCreateConversation_createsNew() {
-        SecuredEnhancedUnifiedWorkflow workflow = service.getOrCreateConversation("conv1", 1L);
+        SecuredEnhancedUnifiedWorkflow workflow = service.getOrCreateConversation("conv1", USER_ID);
         assertThat(workflow).isNotNull();
-        verify(chatHistoryService).startNewChatWithId("conv1", 1L);
+        verify(chatHistoryService).startNewChatWithId("conv1", USER_ID);
     }
 
     @Test
     @DisplayName("getOrCreateConversation: retrieves existing from cache within TTL")
     void getOrCreateConversation_returnsCached() {
-        SecuredEnhancedUnifiedWorkflow w1 = service.getOrCreateConversation("conv1", 1L);
-        SecuredEnhancedUnifiedWorkflow w2 = service.getOrCreateConversation("conv1", 1L);
+        SecuredEnhancedUnifiedWorkflow w1 = service.getOrCreateConversation("conv1", USER_ID);
+        SecuredEnhancedUnifiedWorkflow w2 = service.getOrCreateConversation("conv1", USER_ID);
         
         assertThat(w1).isSameAs(w2);
         // Should only be called once when creating the new cache entry
-        verify(chatHistoryService).startNewChatWithId("conv1", 1L);
+        verify(chatHistoryService).startNewChatWithId("conv1", USER_ID);
     }
 
     @Test
     @DisplayName("processQuestionAsync: executes asynchronously using provided taskExecutor")
     void processQuestionAsync_executes() throws Exception {
         when(workflowProperty.getRequestTimeoutSeconds()).thenReturn(30L);
-        when(chatHistoryService.getRecentContext(anyString(), anyLong(), anyInt())).thenReturn("");
+        when(chatHistoryService.getRecentContext(anyString(), any(java.util.UUID.class), anyInt())).thenReturn("");
         
         // Setup internal mock behavior correctly to return map without failing
-        when(baseWorkflow.processQuestion(anyString(), anyString(), anyString(), anyString(), anyInt(), anyLong()))
+        when(baseWorkflow.processQuestion(anyString(), anyString(), anyString(), anyString(), anyInt(), any(java.util.UUID.class)))
                 .thenReturn(Map.of("test", "success"));
 
-        CompletableFuture<Map<String, Object>> future = service.processQuestionAsync("conv1", "q1", "user", 1, 1L);
+        CompletableFuture<Map<String, Object>> future = service.processQuestionAsync("conv1", "q1", "user", 1, USER_ID);
         Map<String, Object> result = future.get();
         
         assertThat(result).isNotNull();
@@ -89,8 +93,8 @@ class SafeWorkflowManagerImplTest {
     void getStats_returnsMetrics() {
         when(workflowProperty.getConversationCacheSize()).thenReturn(100);
         
-        service.getOrCreateConversation("conv1", 1L);
-        service.getOrCreateConversation("conv2", 2L);
+        service.getOrCreateConversation("conv1", USER_ID);
+        service.getOrCreateConversation("conv2", OTHER_USER_ID);
 
         Map<String, Object> stats = service.getStats();
         

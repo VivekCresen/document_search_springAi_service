@@ -5,6 +5,7 @@ import com.cresensolutions.document_search_springai_service.dto.SupportingPassag
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public interface ConsolidatedCitationManager {
 
@@ -13,6 +14,6 @@ public interface ConsolidatedCitationManager {
             List<RagSourceDocument> sourceDocuments,
             String conversationId,
             Integer questionId,
-            Long userId
+            UUID userId
     );
 }

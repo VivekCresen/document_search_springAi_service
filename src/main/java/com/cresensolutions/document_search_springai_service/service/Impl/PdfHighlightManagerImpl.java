@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
@@ -77,7 +78,7 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
             Color color,
             String conversationId,
             Integer questionId,
-            Long userId,
+            UUID userId,
             List<DiPageSpan> diPageSpans
     ) {
         if (!hasText(pdfBlobName)) {
@@ -333,7 +334,7 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
         }
     }
 
-    private String buildDestBlobName(String sourceBlobName, String conversationId, Integer questionId, Long userId) {
+    private String buildDestBlobName(String sourceBlobName, String conversationId, Integer questionId, UUID userId) {
         String filename = filename(sourceBlobName);
         String baseName = filename.toLowerCase().endsWith(".pdf")
                 ? filename.substring(0, filename.length() - 4)
