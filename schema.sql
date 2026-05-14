@@ -286,3 +286,16 @@ CREATE TABLE IF NOT EXISTS prestage.chat_history (
 --     1,
 --     TRUE
 -- );
+
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    fullname VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(120) NOT NULL
+);
+
+
+-- Index for faster lookups during login
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
