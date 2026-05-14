@@ -1,7 +1,10 @@
 package com.cresensolutions.document_search_springai_service.service.Impl;
 
+import com.cresensolutions.document_search_springai_service.commons.Common;
 import com.cresensolutions.document_search_springai_service.domain.DocumentRepositoryUserMapping;
 import com.cresensolutions.document_search_springai_service.domain.FileInIndex;
+import com.cresensolutions.document_search_springai_service.dto.PermissionCheckRequest;
+import com.cresensolutions.document_search_springai_service.dto.PermissionCheckResponse;
 import com.cresensolutions.document_search_springai_service.repository.DocumentRepositoryUserMappingRepository;
 import com.cresensolutions.document_search_springai_service.repository.FileInIndexRepository;
 import com.cresensolutions.document_search_springai_service.repository.PrestageDocumentRepository;
@@ -11,9 +14,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Comparator;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +41,60 @@ public class UserAccessServiceImpl implements UserAccessService {
     private final FileInIndexRepository fileInIndexRepository;
     private final PrestageDocumentRepository prestageDocumentRepository;
     private final com.cresensolutions.document_search_springai_service.repository.UserRepository userRepository;
+
+    @Override
+    public String resolveCurrentUser(String username, String email) {
+        if (username != null && !username.isBlank()) {
+            return username;
+        }
+        if (email != null && !email.isBlank()) {
+            return email;
+        }
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, Common.AUTHENTICATION_REQUIRED_MESSAGE);
+    }
+
+    @Override
+    public PermissionCheckResponse checkPermissions(String username, PermissionCheckRequest request) {
+        List<String> folderIds = request == null || request.getFolderIds() == null ? List.of() : request.getFolderIds();
+        Map<String, Boolean> permissions = folderIds.stream()
+                .collect(Collectors.toMap(
+                        folderId -> folderId,
+                        folderId -> hasAccessToFolder(username, folderId),
+                        (first, second) -> first
+                ));
+        int accessibleCount = (int) permissions.values().stream().filter(Boolean::booleanValue).count();
+
+        return PermissionCheckResponse.builder()
+                .username(username)
+                .permissions(permissions)
+                .accessibleCount(accessibleCount)
+                .restrictedCount(permissions.size() - accessibleCount)
+                .build();
+    }
+
+    @Override
+    public Map<String, Object> getMyAccess(String username) {
+        List<String> restrictedFolders = getRestrictedFolders(username).stream()
+                .sorted(Comparator.naturalOrder())
+                .toList();
+
+        return Map.of(
+                "username", username,
+                "total_restricted_folders", restrictedFolders.size(),
+                "restricted_folder_ids", restrictedFolders,
+                "note", Common.PERMISSIONS_NOTE
+        );
+    }
+
+    @Override
+    public Map<String, Object> clearPermissionCache(String username) {
+        clearUserRestrictionsCache(username);
+        return Map.of(
+                "success", true,
+                "message", "Permission cache cleared for user: " + username,
+                "username", username
+        );
+    }
 
     @Override
     @Cacheable(value = "userRestrictions", key = "#username")

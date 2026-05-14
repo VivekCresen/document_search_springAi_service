@@ -1,5 +1,6 @@
 package com.cresensolutions.document_search_springai_service.config;
 
+import com.cresensolutions.document_search_springai_service.commons.Common;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
@@ -9,10 +10,10 @@ import org.springframework.context.annotation.Configuration;
 @ConditionalOnBean(ChatClient.Builder.class)
 public class ChatClientConfig {
 
-    public static final String STANDALONE_QUERY_CHAT_CLIENT = "standaloneQueryChatClient";
-    public static final String INTENT_CLASSIFIER_CHAT_CLIENT = "intentClassifierChatClient";
-    public static final String SECURED_RAG_CHAT_CLIENT = "securedRagChatClient";
-    public static final String GENERAL_CHAT_CLIENT = "generalChatClient";
+    public static final String STANDALONE_QUERY_CHAT_CLIENT = Common.STANDALONE_QUERY_CHAT_CLIENT;
+    public static final String INTENT_CLASSIFIER_CHAT_CLIENT = Common.INTENT_CLASSIFIER_CHAT_CLIENT;
+    public static final String SECURED_RAG_CHAT_CLIENT = Common.SECURED_RAG_CHAT_CLIENT;
+    public static final String GENERAL_CHAT_CLIENT = Common.GENERAL_CHAT_CLIENT;
 
     private static final String STANDALONE_SYSTEM_PROMPT =
             "You rewrite follow-up questions into standalone questions.";

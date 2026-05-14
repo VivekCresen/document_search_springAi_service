@@ -5,6 +5,7 @@ import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.models.BlobHttpHeaders;
 import com.azure.storage.blob.sas.BlobSasPermission;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
+import com.cresensolutions.document_search_springai_service.commons.Common;
 import com.cresensolutions.document_search_springai_service.config.CloudProperty;
 import com.cresensolutions.document_search_springai_service.dto.DiPageSpan;
 import com.cresensolutions.document_search_springai_service.dto.HighlightedPdfResult;
@@ -53,9 +54,6 @@ import java.util.regex.Pattern;
 @Slf4j
 public class PdfHighlightManagerImpl implements PdfHighlightManager {
 
-    private static final String HIGHLIGHTED_FOLDER = "highlighted_docs";
-    private static final float DI_TO_POINTS = 72.0f;
-
     private final BlobServiceClient blobServiceClient;
     private final CloudProperty cloudProperty;
 
@@ -81,33 +79,36 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
             UUID userId,
             List<DiPageSpan> diPageSpans
     ) {
+        // Return early if blob name is missing
         if (!hasText(pdfBlobName)) {
             return emptyResult();
         }
 
         try {
-            // 1. Download original PDF from Azure Blob Storage
+            // 1. Download original PDF from Azure Blob Storage into memory
             byte[] pdfBytes = downloadBlob(pdfBlobName);
             Set<Integer> highlightedPages = new LinkedHashSet<>();
             int totalHighlights;
 
+            // Use PDFBox to load and manipulate the document
             try (PDDocument document = PDDocument.load(pdfBytes)) {
                 Color highlightColor = color == null ? Color.YELLOW : color;
                 
-                // 2. Try Strategy 1: Coordinate-based highlighting (Fast & Precise)
+                // 2. Try Strategy 1: Coordinate-based highlighting (Fastest & most precise)
+                // This uses the 'diPageSpans' which contain physical coordinates in inches.
                 totalHighlights = applyCoordinateHighlights(document, diPageSpans, textPassages, highlightColor, highlightedPages);
 
-                // 3. Fallback to Strategy 2-4: Text-search based highlighting
+                // 3. Fallback to Strategy 2-4: Text-search based highlighting if coordinates aren't available or didn't work
                 if (totalHighlights == 0) {
                     totalHighlights = applyTextFallbackHighlights(document, textPassages, highlightColor, highlightedPages);
                 }
 
-                // 4. Upload the annotated PDF to a unique location in blob storage
+                // 4. Build a unique name for the temporary highlighted PDF and upload it
                 String destinationBlobName = buildDestBlobName(pdfBlobName, conversationId, questionId, userId);
                 byte[] highlightedBytes = writeDocument(document);
                 uploadBlob(destinationBlobName, highlightedBytes);
 
-                // 5. Generate SAS URLs for viewing and downloading
+                // 5. Generate secure SAS URLs with optional page fragments (e.g., #page=2)
                 List<Integer> pages = highlightedPages.stream().sorted().toList();
                 Integer firstPage = pages.isEmpty() ? null : pages.get(0);
                 return HighlightedPdfResult.builder()
@@ -117,7 +118,7 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
                         .build();
             }
         } catch (Exception e) {
-            log.warn("PDF highlighting failed for {}", pdfBlobName, e);
+            log.warn("PDF highlighting failed for {}: {}", pdfBlobName, e.getMessage());
             return emptyResult();
         }
     }
@@ -153,8 +154,8 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
             float maxX = Float.MIN_VALUE;
             float maxY = Float.MIN_VALUE;
             for (int i = 0; i + 1 < polygon.size(); i += 2) {
-                float x = (float) (polygon.get(i) * DI_TO_POINTS);
-                float y = (float) (polygon.get(i + 1) * DI_TO_POINTS);
+                float x = (float) (polygon.get(i) * Common.DOCUMENT_INTELLIGENCE_TO_PDF_POINTS);
+                float y = (float) (polygon.get(i + 1) * Common.DOCUMENT_INTELLIGENCE_TO_PDF_POINTS);
                 minX = Math.min(minX, x);
                 minY = Math.min(minY, y);
                 maxX = Math.max(maxX, x);
@@ -350,7 +351,7 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
             suffixParts.add("user" + userId);
         }
         String suffix = suffixParts.isEmpty() ? "" : "_" + String.join("_", suffixParts);
-        return HIGHLIGHTED_FOLDER + "/" + baseName + suffix + ".pdf";
+        return Common.HIGHLIGHTED_DOCS_FOLDER + "/" + baseName + suffix + Common.PDF_EXTENSION;
     }
 
     private String generateSasUrl(String blobName, String disposition, Integer page) {

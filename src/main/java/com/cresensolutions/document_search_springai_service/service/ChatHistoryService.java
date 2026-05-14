@@ -4,7 +4,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Contract for storing chat sessions and building recent conversation context.
+ * Service interface for managing chat history and conversation context.
+ * Provides methods to start new chats, append messages, and retrieve context for RAG.
  */
 public interface ChatHistoryService {
 

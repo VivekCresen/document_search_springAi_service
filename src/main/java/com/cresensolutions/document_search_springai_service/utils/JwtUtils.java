@@ -1,4 +1,4 @@
-package com.cresensolutions.document_search_springai_service.security;
+package com.cresensolutions.document_search_springai_service.utils;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;

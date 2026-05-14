@@ -1,6 +1,8 @@
 package com.cresensolutions.document_search_springai_service.service;
 
 import com.cresensolutions.document_search_springai_service.domain.FileInIndex;
+import com.cresensolutions.document_search_springai_service.dto.PermissionCheckRequest;
+import com.cresensolutions.document_search_springai_service.dto.PermissionCheckResponse;
 
 import java.util.List;
 import java.util.Map;
@@ -15,6 +17,26 @@ public interface UserAccessService {
      * Returns folder ids that the user is not allowed to search.
      */
     List<String> getRestrictedFolders(String username);
+
+    /**
+     * Resolves the active user identity from request-provided username/email values.
+     */
+    String resolveCurrentUser(String username, String email);
+
+    /**
+     * Builds a permission check response for the supplied folders.
+     */
+    PermissionCheckResponse checkPermissions(String username, PermissionCheckRequest request);
+
+    /**
+     * Builds the current user's access summary.
+     */
+    Map<String, Object> getMyAccess(String username);
+
+    /**
+     * Clears the current user's permission cache and returns response payload.
+     */
+    Map<String, Object> clearPermissionCache(String username);
 
     /**
      * Checks access to one folder id.

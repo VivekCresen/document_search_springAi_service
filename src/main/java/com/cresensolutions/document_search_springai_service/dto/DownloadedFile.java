@@ -4,15 +4,18 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.core.io.Resource;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DownloadedDocument {
+public class DownloadedFile {
 
     private String filename;
     private String contentDisposition;
-    private Resource resource;
+    private byte[] content;
+
+    public boolean hasContent() {
+        return content != null && content.length > 0;
+    }
 }

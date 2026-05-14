@@ -1,5 +1,6 @@
 package com.cresensolutions.document_search_springai_service.service.Impl;
 
+import com.cresensolutions.document_search_springai_service.commons.Common;
 import com.cresensolutions.document_search_springai_service.service.CostTrackerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,8 +32,8 @@ public class CostTrackerServiceImpl implements CostTrackerService {
     private double outputCostPerMillion;
 
     private final AtomicReference<Double> currentTotal = new AtomicReference<>(0.0);
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern(Common.ISO_DATE_PATTERN);
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern(Common.ISO_TIME_PATTERN);
 
     @PostConstruct
     public void init() {
@@ -44,7 +45,7 @@ public class CostTrackerServiceImpl implements CostTrackerService {
                     Files.createDirectories(parent);
                 }
                 try (PrintWriter writer = new PrintWriter(new FileWriter(csvPath, false))) {
-                    writer.println("date,time,operation_type,tokens_input,tokens_output,tokens_reasoning,cost_input,cost_output,total_cost,cumulative_total");
+                    writer.println(Common.COST_TRACKING_CSV_HEADER);
                 }
             } catch (IOException e) {
                 log.error("Failed to initialize cost tracking CSV at {}", csvPath, e);

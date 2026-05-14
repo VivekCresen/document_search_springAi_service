@@ -20,21 +20,33 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Implementation of QueryService that orchestrates the query workflow.
+ * Uses SafeWorkflowManager to handle the complex multi-stage search process.
+ */
 @Service
 @RequiredArgsConstructor
 public class QueryServiceImpl implements QueryService {
 
     private static final DateTimeFormatter RESPONSE_TIMESTAMP =
-            DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss");
+            DateTimeFormatter.ofPattern(Common.RESPONSE_TIMESTAMP_PATTERN);
 
     private final SafeWorkflowManager workflowManager;
     private final ResponseForwardingService responseForwardingService;
 
+    /**
+     * Entry point for query processing. Resolves conversation context and triggers the workflow.
+     *
+     * @param request the incoming search request
+     * @return CompletableFuture with the search result
+     */
     @Override
     public CompletableFuture<EnvelopeResponse> processQuery(EnvelopeRequest request) {
         RequestData data = request.getRequestData();
+        // Ensure we have a valid conversation ID (generate one if missing)
         String conversationId = resolveConversationId(data.getConversationId());
 
+        // Delegate the actual processing to the workflow manager
         return workflowManager.processQuestionAsync(
                         conversationId,
                         data.getQuestion(),
@@ -43,6 +55,7 @@ public class QueryServiceImpl implements QueryService {
                         data.getUserId()
                 )
                 .thenApply(result -> {
+                    // Once workflow finishes, build the envelope response and forward it
                     EnvelopeResponse response = buildResponse(data, conversationId, result);
                     responseForwardingService.forwardResponse(response);
                     return response;
@@ -84,7 +97,7 @@ public class QueryServiceImpl implements QueryService {
     private AnswerItem buildAnswerItem(String answer, Map<String, Object> result, String responseType) {
         AnswerItem.AnswerItemBuilder builder = AnswerItem.builder();
         if (Common.TEXT_RESPONSE_TYPE.equals(responseType) || Common.TEXT_TABLE_RESPONSE_TYPE.equals(responseType)) {
-            builder.text(answer == null || answer.isBlank() ? "No answer generated." : answer);
+            builder.text(answer == null || answer.isBlank() ? Common.NO_ANSWER_GENERATED : answer);
         }
         if (!Common.TEXT_RESPONSE_TYPE.equals(responseType)) {
             builder.table(tablePayload(result.get(Common.RESULT_DATA_PAYLOAD)));

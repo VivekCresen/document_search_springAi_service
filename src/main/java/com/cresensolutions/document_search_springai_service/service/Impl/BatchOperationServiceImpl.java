@@ -15,7 +15,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Default batch metadata service backed by FileMetadataRepository.
+ * Implementation of BatchOperationService for handling multi-file metadata updates.
+ * Optimized with caching and transactional support.
  */
 @Service
 @RequiredArgsConstructor
@@ -24,6 +25,13 @@ public class BatchOperationServiceImpl implements BatchOperationService {
 
     private final FileMetadataRepository fileMetadataRepository;
 
+    /**
+     * Updates the status of multiple documents at once.
+     * Evicts relevant caches to ensure data consistency.
+     *
+     * @param documentIds list of document IDs to update
+     * @param status the new status to apply
+     */
     @Override
     @Transactional
     @CacheEvict(value = {"fileMetadata", "stableFiles"}, allEntries = true)

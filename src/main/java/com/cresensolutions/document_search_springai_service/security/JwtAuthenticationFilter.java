@@ -1,5 +1,6 @@
 package com.cresensolutions.document_search_springai_service.security;
 
+import com.cresensolutions.document_search_springai_service.utils.JwtUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

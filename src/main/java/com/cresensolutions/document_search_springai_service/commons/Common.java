@@ -19,9 +19,21 @@ public class Common {
     public static final String TEXT_TABLE_RESPONSE_TYPE = "text/table";
     public static final String CHAT_ID_PREFIX = "chat_";
     public static final int CHAT_ID_LENGTH = 12;
+    public static final String DEFAULT_CHAT_PROFILE = "default";
+    public static final String DEFAULT_CHAT_TITLE = "New Conversation";
+    public static final String NO_RECENT_CONTEXT = "None (This is the first interaction)";
+    public static final String NO_ANSWER_GENERATED = "No answer generated.";
+    public static final String RESPONSE_TIMESTAMP_PATTERN = "MM/dd/yyyy HH:mm:ss";
+    public static final String CHAT_DATE_PATTERN = "dd/MM/yyyy";
+    public static final String ISO_DATE_PATTERN = "yyyy-MM-dd";
+    public static final String ISO_TIME_PATTERN = "HH:mm:ss";
 
     public static final String TASK_EXECUTOR = "taskExecutor";
     public static final String DOC_SEARCH_THREAD_PREFIX = "doc-search-";
+    public static final String STANDALONE_QUERY_CHAT_CLIENT = "standaloneQueryChatClient";
+    public static final String INTENT_CLASSIFIER_CHAT_CLIENT = "intentClassifierChatClient";
+    public static final String SECURED_RAG_CHAT_CLIENT = "securedRagChatClient";
+    public static final String GENERAL_CHAT_CLIENT = "generalChatClient";
 
     public static final String CACHE_USER_RESTRICTIONS = "userRestrictions";
     public static final String CACHE_FILE_METADATA = "fileMetadata";
@@ -104,6 +116,20 @@ public class Common {
     public static final String HIGHLIGHTED_DOCS_FOLDER = "highlighted_docs";
     public static final String PDF_EXTENSION = ".pdf";
     public static final String PAGE_FRAGMENT_PREFIX = "#page=";
+    public static final float DOCUMENT_INTELLIGENCE_TO_PDF_POINTS = 72.0f;
+
+    public static final String HEADER_X_USERNAME = "X-Username";
+    public static final String HEADER_X_USER_EMAIL = "X-User-Email";
+    public static final String PERMISSIONS_NOTE = "You can access all folders except those listed above";
+    public static final String AUTHENTICATION_REQUIRED_MESSAGE =
+            "Authentication required. Provide X-Username or X-User-Email header.";
+
+    public static final String FILE_STATUS_UPLOADED = "UPLOADED";
+    public static final String SYSTEM_SYNC_USER = "SYSTEM_SYNC";
+    public static final String AZURE_CLIENT_AUTHENTICATION_ERROR = "Azure client authentication failed";
+    public static final String AZURE_STORAGE_ERROR = "Azure storage error occurred";
+    public static final String COST_TRACKING_CSV_HEADER =
+            "date,time,operation_type,tokens_input,tokens_output,tokens_reasoning,cost_input,cost_output,total_cost,cumulative_total";
 
     public static final String GENERAL_GREETING_RESPONSE =
             "Hello! Ask me a question about your documents or data and I can help.";

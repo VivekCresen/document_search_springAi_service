@@ -1,5 +1,6 @@
 package com.cresensolutions.document_search_springai_service.service.Impl;
 
+import com.cresensolutions.document_search_springai_service.commons.Common;
 import com.cresensolutions.document_search_springai_service.domain.ChatHistory;
 import com.cresensolutions.document_search_springai_service.repository.ChatHistoryRepository;
 import com.cresensolutions.document_search_springai_service.service.ChatHistoryService;
@@ -13,8 +14,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * Unified Chat History implementation that stores all user chats in a single JSONB entry.
- * Matches the requested 'chat_history' table structure.
+ * Implementation of ChatHistoryService that manages chat history in a unified JSONB structure.
+ * This service handles the mapping of individual chats within a single user-level ChatHistory record.
  */
 @Service
 @RequiredArgsConstructor
@@ -23,30 +24,45 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
 
     private final ChatHistoryRepository chatHistoryRepository;
     private final com.cresensolutions.document_search_springai_service.repository.UserRepository userRepository;
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern(Common.CHAT_DATE_PATTERN);
 
+    /**
+     * Starts a new chat session with a generated unique ID.
+     *
+     * @param userId the ID of the user starting the chat
+     * @return the generated chat ID
+     */
     @Override
     @Transactional
     public String startNewChat(UUID userId) {
-        String chatId = "chat_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        // Generate a random chat ID with a specific prefix and length
+        String chatId = Common.CHAT_ID_PREFIX
+                + UUID.randomUUID().toString().replace("-", "").substring(0, Common.CHAT_ID_LENGTH);
         startNewChatWithId(chatId, userId);
         return chatId;
     }
 
+    /**
+     * Initializes a chat session with a specific ID if it doesn't already exist.
+     *
+     * @param chatId the chat ID to initialize
+     * @param userId the ID of the user
+     */
     @Override
     @Transactional
     public void startNewChatWithId(String chatId, UUID userId) {
         ChatHistory history = getOrCreateChatHistory(userId);
         Map<String, Object> conversations = history.getConversations();
 
+        // Only initialize if this chat ID is new for the user
         if (!conversations.containsKey(chatId)) {
             Map<String, Object> chatEntry = new LinkedHashMap<>();
             chatEntry.put("conversation_id", chatId);
             chatEntry.put("user_id", userId);
             chatEntry.put("chatDate", OffsetDateTime.now().format(DATE_FORMATTER));
             chatEntry.put("messages", new ArrayList<Map<String, Object>>());
-            chatEntry.put("profile", "default");
-            chatEntry.put("chatTitle", "New Conversation");
+            chatEntry.put("profile", Common.DEFAULT_CHAT_PROFILE);
+            chatEntry.put("chatTitle", Common.DEFAULT_CHAT_TITLE);
             chatEntry.put("username", history.getUserName());
             
             conversations.put(chatId, chatEntry);
@@ -92,28 +108,38 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
         appendMessageToChat(chatId, userId, messageEntry);
     }
 
+    /**
+     * Retrieves recent conversation context to provide context for the LLM.
+     *
+     * @param chatId the chat ID
+     * @param userId the user ID
+     * @param messageLimit maximum number of messages to include in context
+     * @return formatted context string or a default "No recent context" message
+     */
     @Override
     @Transactional(readOnly = true)
     @SuppressWarnings("unchecked")
     public String getRecentContext(String chatId, UUID userId, int messageLimit) {
-        if (userId == null) return "None (This is the first interaction)";
+        if (userId == null) return Common.NO_RECENT_CONTEXT;
         ChatHistory history = chatHistoryRepository.findByUserId(userId).orElse(null);
-        if (history == null) return "None (This is the first interaction)";
+        if (history == null) return Common.NO_RECENT_CONTEXT;
 
         Map<String, Object> conversations = history.getConversations();
-        if (!conversations.containsKey(chatId)) return "None (This is the first interaction)";
+        if (!conversations.containsKey(chatId)) return Common.NO_RECENT_CONTEXT;
 
         Map<String, Object> chatEntry = (Map<String, Object>) conversations.get(chatId);
         List<Map<String, Object>> messages = (List<Map<String, Object>>) chatEntry.get("messages");
 
-        if (messages.isEmpty()) return "None (This is the first interaction)";
+        if (messages.isEmpty()) return Common.NO_RECENT_CONTEXT;
 
         StringBuilder context = new StringBuilder();
+        // Calculate the starting index based on the message limit
         int start = Math.max(0, messages.size() - messageLimit);
         for (int i = start; i < messages.size(); i++) {
             Map<String, Object> msg = messages.get(i);
             if (i > start) context.append("\n\n");
             
+            // Extract question/content and answer
             String q = (String) msg.getOrDefault("question", msg.getOrDefault("content", ""));
             String a = (String) msg.getOrDefault("answer", "");
             

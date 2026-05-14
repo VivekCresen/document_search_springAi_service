@@ -2,6 +2,7 @@ package com.cresensolutions.document_search_springai_service.service;
 
 import com.cresensolutions.document_search_springai_service.dto.DocumentLinkResponse;
 import com.cresensolutions.document_search_springai_service.dto.DownloadedDocument;
+import com.cresensolutions.document_search_springai_service.dto.DownloadedFile;
 import com.cresensolutions.document_search_springai_service.domain.FileInIndex;
 import com.cresensolutions.document_search_springai_service.domain.FileMetadata;
 import com.cresensolutions.document_search_springai_service.domain.FilePath;
@@ -36,6 +37,8 @@ public interface DocumentService {
      */
     Boolean uploadFile(FilePath fileInfo, MultipartFile input, String status, String loggedInUser) throws IOException;
 
+    Boolean uploadDocument(FilePath fileInfo, MultipartFile input, String loggedInUser) throws IOException;
+
     /**
      * Downloads a file content directly from Azure Storage using a FilePath.
      * Use this when you want to bypass the database lookup entirely.
@@ -44,6 +47,8 @@ public interface DocumentService {
      * @return the file bytes as a ByteArrayOutputStream
      */
     ByteArrayOutputStream downloadFileDirectly(FilePath fileInfo);
+
+    DownloadedFile getDownloadedFileByPath(String path);
 
     /**
      * Downloads a file from Azure Blob Storage by document ID.
@@ -54,6 +59,8 @@ public interface DocumentService {
      */
     ByteArrayOutputStream downloadFileByDocumentId(String documentId);
 
+    DownloadedFile getDownloadedFileByDocumentId(String documentId);
+
     /**
      * Downloads a file from Azure Blob Storage using the hierarchical FilePath.
      * Performs a DB lookup first to find the canonical blob name.
@@ -63,6 +70,8 @@ public interface DocumentService {
      * @throws IOException if database or storage errors occur
      */
     ByteArrayOutputStream downloadFile(FilePath fileInfo) throws IOException;
+
+    DownloadedFile getDownloadedFile(FilePath fileInfo) throws IOException;
 
     /**
      * Downloads a document from Azure Blob Storage.

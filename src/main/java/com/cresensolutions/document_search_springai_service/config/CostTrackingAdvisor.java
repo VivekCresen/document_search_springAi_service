@@ -29,10 +29,10 @@ public class CostTrackingAdvisor implements CallAdvisor {
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest request, CallAdvisorChain chain) {
         ChatClientResponse response = chain.nextCall(request);
-        if (response != null && response.chatResponse() != null && response.chatResponse().getMetadata() != null && response.chatResponse().getMetadata().getUsage() != null) {
+        if (response.chatResponse() != null && response.chatResponse().getMetadata().getUsage() != null) {
             org.springframework.ai.chat.metadata.Usage usage = response.chatResponse().getMetadata().getUsage();
-            int inputTokens = usage.getPromptTokens() != null ? usage.getPromptTokens().intValue() : 0;
-            int outputTokens = usage.getCompletionTokens() != null ? usage.getCompletionTokens().intValue() : 0;
+            int inputTokens = usage.getPromptTokens() == null ? 0 : usage.getPromptTokens();
+            int outputTokens = usage.getCompletionTokens() != null ? usage.getCompletionTokens() : 0;
             costTrackerService.logUsage("chat_completion", inputTokens, outputTokens, 0);
             log.debug("Logged chat_completion usage: input={}, output={}", inputTokens, outputTokens);
         }

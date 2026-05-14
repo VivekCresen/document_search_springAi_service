@@ -122,13 +122,13 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
             Integer questionId,
             java.util.UUID userId
     ) {
-        // 1. Apply folder-level and file-stability filters
+        // 1. Apply folder-level and file-stability filters to ensure user only sees what they should
         List<SearchResultDocument> filteredDocs = filterSearchResults(username, prefetchedDocs);
         
-        // 2. Map filtered results to RAG source documents
+        // 2. Map filtered results to RAG source documents with necessary metadata
         List<RagSourceDocument> sourceDocuments = getSourceDocuments(filteredDocs);
 
-        // 3. Handle case where no documents are accessible
+        // 3. Handle case where no documents are accessible after security filtering
         if (sourceDocuments.isEmpty()) {
             return DocumentAnswer.builder()
                     .answer(Common.NO_ACCESSIBLE_DOCUMENTS_RESPONSE)
@@ -136,25 +136,25 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
                     .build();
         }
 
-        // 4. Build the context and prompt for the LLM
+        // 4. Build the context string and format the full LLM prompt
         String context = buildContext(sourceDocuments);
         String prompt = USER_PROMPT.formatted(context, question);
 
         try {
-            // 5. Invoke the LLM (Spring AI ChatClient)
+            // 5. Invoke the LLM (Spring AI ChatClient) to generate a response in JSON format
             String rawResponse = invokeLlm(prompt);
             
-            // 6. Parse the JSON response from the LLM
+            // 6. Parse the JSON response from the LLM into a structured DTO
             RagLlmResponse parsed = parseLlmResponse(rawResponse);
             String answer = CommonUtils.hasText(parsed.getAnswer()) ? parsed.getAnswer() : rawResponse;
             
-            // 7. Validate that LLM extractions actually exist in the source text
+            // 7. Validate that LLM-claimed extractions actually exist in the source text (hallucination check)
             List<ValidatedExtraction> validated = validateExtractions(parsed.getRawExtractions(), sourceDocuments);
             
-            // 8. Consolidate validated extractions by PDF source (unioning coordinates)
+            // 8. Consolidate validated extractions by PDF source to prevent redundant highlights
             List<SupportingPassage> consolidated = consolidateByPdf(validated);
             
-            // 9. Generate citations with highlighted PDF links
+            // 9. Generate citations with secure, time-limited highlighted PDF links
             Map<String, Object> citations = citationManager.createCitationsFromPassages(
                     consolidated,
                     sourceDocuments,
@@ -168,7 +168,7 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
                     .citations(citations)
                     .build();
         } catch (Exception e) {
-            log.warn("Secured RAG pipeline failed", e);
+            log.warn("Secured RAG pipeline failed: {}", e.getMessage());
             return DocumentAnswer.builder()
                     .answer(Common.DOCUMENT_RESPONSE_ERROR)
                     .citations(Map.of())

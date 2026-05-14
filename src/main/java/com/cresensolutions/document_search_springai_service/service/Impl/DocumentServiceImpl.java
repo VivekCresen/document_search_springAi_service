@@ -8,9 +8,11 @@ import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.models.BlobItem;
 import com.azure.storage.blob.sas.BlobSasPermission;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
+import com.cresensolutions.document_search_springai_service.commons.Common;
 import com.cresensolutions.document_search_springai_service.config.CloudProperty;
 import com.cresensolutions.document_search_springai_service.dto.DocumentLinkResponse;
 import com.cresensolutions.document_search_springai_service.dto.DownloadedDocument;
+import com.cresensolutions.document_search_springai_service.dto.DownloadedFile;
 import com.cresensolutions.document_search_springai_service.domain.FileInIndex;
 import com.cresensolutions.document_search_springai_service.domain.FileMetadata;
 import com.cresensolutions.document_search_springai_service.domain.FilePath;
@@ -53,12 +55,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class DocumentServiceImpl implements com.cresensolutions.document_search_springai_service.service.DocumentService {
-
-    // -------------------------------------------------------------------------
-    // Error-message constants (match company style)
-    // -------------------------------------------------------------------------
-    private static final String CLIENT_AUTHENTICATION_EXCEPTION_ERR_MSG = "Azure client authentication failed";
-    private static final String AZURE_EXCEPTION_ERR_MSG = "Azure storage error occurred";
 
     // -------------------------------------------------------------------------
     // Dependencies
@@ -113,6 +109,13 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
         return uploadAndSaveFile(fileInfo, input, status, loggedInUser);
     }
 
+    @Override
+    @Transactional
+    @CacheEvict(value = {"fileMetadata", "blobNames", "stableFiles"}, allEntries = true)
+    public Boolean uploadDocument(FilePath fileInfo, MultipartFile input, String loggedInUser) throws IOException {
+        return uploadAndSaveFile(fileInfo, input, Common.FILE_STATUS_UPLOADED, loggedInUser);
+    }
+
     // =========================================================================
     // Public API — Download
     // =========================================================================
@@ -130,6 +133,17 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
         String blobName = filePath.toFullPath();
         log.info("Direct download — blob path: {}", blobName);
         return downloadByBlobName(blobName);
+    }
+
+    @Override
+    public DownloadedFile getDownloadedFileByPath(String path) {
+        FilePath filePath = FilePath.of(splitBlobPath(path));
+        ByteArrayOutputStream output = downloadFileDirectly(filePath);
+        return DownloadedFile.builder()
+                .filename(filePath.getFileName())
+                .contentDisposition(attachment(filePath.getFileName()))
+                .content(output == null ? null : output.toByteArray())
+                .build();
     }
 
     /**
@@ -161,6 +175,17 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
         return downloadByBlobName(blobName);
     }
 
+    @Override
+    public DownloadedFile getDownloadedFile(FilePath fileInfo) throws IOException {
+        FilePath filePath = normalizeFilePath(fileInfo);
+        ByteArrayOutputStream output = downloadFile(filePath);
+        return DownloadedFile.builder()
+                .filename(filePath.getFileName())
+                .contentDisposition(attachment(filePath.getFileName()))
+                .content(output == null ? null : output.toByteArray())
+                .build();
+    }
+
     /**
      * Downloads a file from Azure Blob Storage using a known document ID.
      * Looks up the {@code blob_name} from the DB by {@code filePath[1]} (document-ID segment),
@@ -174,6 +199,16 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
         String blobName = getBlobNameByDocumentId(documentId);
         log.info("Fetching blob '{}' by documentId '{}'", blobName, documentId);
         return downloadByBlobName(blobName);
+    }
+
+    @Override
+    public DownloadedFile getDownloadedFileByDocumentId(String documentId) {
+        ByteArrayOutputStream output = downloadFileByDocumentId(documentId);
+        return DownloadedFile.builder()
+                .filename(getFilename(documentId))
+                .contentDisposition(attachment(getFilename(documentId)))
+                .content(output == null ? null : output.toByteArray())
+                .build();
     }
 
     /**
@@ -201,6 +236,7 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
     public DownloadedDocument getDownloadedDocument(String documentId) {
         return DownloadedDocument.builder()
                 .filename(getFilename(documentId))
+                .contentDisposition(attachment(getFilename(documentId)))
                 .resource(downloadDocument(documentId))
                 .build();
     }
@@ -362,7 +398,7 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
             log.info("Sync: Creating new metadata record for blob: {}", blobName);
             fileMetadataRepository.save(FileMetadata.builder()
                     .filepath(filePath)
-                    .createdBy("SYSTEM_SYNC")
+                    .createdBy(Common.SYSTEM_SYNC_USER)
                     .azureBlobUrl(blobUrl)
                     .blobName(blobName)
                     .fileSizeInMb(BigDecimal.valueOf(fileSizeInMb).setScale(2, RoundingMode.HALF_UP))
@@ -473,9 +509,9 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
 
             return true;
         } catch (ClientAuthenticationException e) {
-            log.error(CLIENT_AUTHENTICATION_EXCEPTION_ERR_MSG, e);
+            log.error(Common.AZURE_CLIENT_AUTHENTICATION_ERROR, e);
         } catch (AzureException e) {
-            log.error(AZURE_EXCEPTION_ERR_MSG, e);
+            log.error(Common.AZURE_STORAGE_ERROR, e);
         } catch (Exception e) {
             log.error("Failed to upload file", e);
         }
@@ -508,9 +544,9 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
             log.info("Blob '{}' downloaded successfully ({} bytes)", blobName, outputStream.size());
             return outputStream;
         } catch (ClientAuthenticationException e) {
-            log.error(CLIENT_AUTHENTICATION_EXCEPTION_ERR_MSG, e);
+            log.error(Common.AZURE_CLIENT_AUTHENTICATION_ERROR, e);
         } catch (AzureException e) {
-            log.error(AZURE_EXCEPTION_ERR_MSG, e);
+            log.error(Common.AZURE_STORAGE_ERROR, e);
         } catch (Exception e) {
             log.error("Failed to download blob '{}'", blobName, e);
         }
@@ -619,6 +655,22 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
     }
 
     /**
+     * Splits a raw blob path string into a list of segments.
+     * Useful for converting "folder/file.pdf" back into a structured path.
+     * 
+     * @param path the raw path string
+     * @return list of non-empty path segments
+     */
+    private List<String> splitBlobPath(String path) {
+        if (path == null || path.isBlank()) {
+            throw new IllegalArgumentException("path must not be blank");
+        }
+        return Arrays.stream(path.split("/"))
+                .filter(segment -> segment != null && !segment.isBlank())
+                .toList();
+    }
+
+    /**
      * Parses a status string into a FileStatus enum, defaulting to UPLOADED if invalid.
      */
     private FileMetadata.FileStatus parseStatus(String status) {
@@ -633,7 +685,12 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
         }
     }
 
-    /** Converts bytes to megabytes. */
+    /**
+     * Converts a size in bytes to megabytes (MB).
+     * 
+     * @param bytes the size in bytes
+     * @return the size in megabytes
+     */
     private Double toMb(long bytes) {
         return bytes / (1024.0 * 1024.0);
     }
@@ -645,6 +702,19 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
     private BlobClient getBlobClientByDocumentId(String documentId) {
         return getBlobContainerClient(cloudProperty.getContainerName())
                 .getBlobClient(getBlobNameByDocumentId(documentId));
+    }
+
+    /**
+     * Formats a standard Content-Disposition header value with a filename.
+     * 
+     * @param filename the display name of the file
+     * @return the formatted header value (e.g., "attachment; filename=\"doc.pdf\"")
+     */
+    private String attachment(String filename) {
+        return Common.CONTENT_DISPOSITION_FILENAME_FORMAT.formatted(
+                Common.CONTENT_DISPOSITION_ATTACHMENT,
+                filename
+        );
     }
 
     /**

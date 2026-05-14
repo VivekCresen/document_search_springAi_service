@@ -1,5 +1,6 @@
 package com.cresensolutions.document_search_springai_service.controller;
 
+import com.cresensolutions.document_search_springai_service.dto.DownloadedFile;
 import com.cresensolutions.document_search_springai_service.dto.DownloadedDocument;
 import com.cresensolutions.document_search_springai_service.domain.FilePath;
 import com.cresensolutions.document_search_springai_service.service.DocumentService;
@@ -17,9 +18,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayOutputStream;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * REST Controller for document management operations.
@@ -51,7 +49,7 @@ public class DocumentController {
             @RequestPart("file") MultipartFile file,
             @RequestParam("username") String username) {
         try {
-            boolean success = documentService.uploadFile(fileInfo, file, "UPLOADED", username);
+            boolean success = documentService.uploadDocument(fileInfo, file, username);
             return success ? ResponseEntity.ok("File uploaded successfully.")
                     : ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload file");
         } catch (Exception e) {
@@ -78,7 +76,7 @@ public class DocumentController {
 
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + document.getFilename() + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, document.getContentDisposition())
                     .body(document.getResource());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -95,14 +93,14 @@ public class DocumentController {
     @Operation(summary = "Download a file by JSON path", description = "Download a file using the stored filePath JSON")
     public ResponseEntity<byte[]> downloadFile(@RequestBody FilePath fileInfo) {
         try {
-            ByteArrayOutputStream output = documentService.downloadFile(fileInfo);
-            if (output == null) {
+            DownloadedFile downloadedFile = documentService.getDownloadedFile(fileInfo);
+            if (!downloadedFile.hasContent()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileInfo.getFileName() + "\"")
-                    .body(output.toByteArray());
+                    .header(HttpHeaders.CONTENT_DISPOSITION, downloadedFile.getContentDisposition())
+                    .body(downloadedFile.getContent());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
@@ -121,15 +119,14 @@ public class DocumentController {
     @Operation(summary = "Download file by document ID", description = "Fetch blob_name from DB using documentId, then stream the file from Azure Storage")
     public ResponseEntity<byte[]> downloadByDocumentId(@PathVariable String documentId) {
         try {
-            ByteArrayOutputStream output = documentService.downloadFileByDocumentId(documentId);
-            if (output == null || output.size() == 0) {
+            DownloadedFile downloadedFile = documentService.getDownloadedFileByDocumentId(documentId);
+            if (!downloadedFile.hasContent()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            String fileName = documentService.getFilename(documentId);
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
-                    .body(output.toByteArray());
+                    .header(HttpHeaders.CONTENT_DISPOSITION, downloadedFile.getContentDisposition())
+                    .body(downloadedFile.getContent());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(("Error: " + e.getMessage()).getBytes());
@@ -148,17 +145,14 @@ public class DocumentController {
     @Operation(summary = "Download a file by blob path", description = "Download a file using the full blob path e.g. folder/uuid/filename.txt")
     public ResponseEntity<byte[]> downloadByPath(@RequestParam("path") String path) {
         try {
-            List<String> segments = Arrays.asList(path.split("/"));
-            FilePath fileInfo = FilePath.of(segments);
-            ByteArrayOutputStream output = documentService.downloadFileDirectly(fileInfo);
-            if (output == null || output.size() == 0) {
+            DownloadedFile downloadedFile = documentService.getDownloadedFileByPath(path);
+            if (!downloadedFile.hasContent()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            String fileName = segments.get(segments.size() - 1);
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
-                    .body(output.toByteArray());
+                    .header(HttpHeaders.CONTENT_DISPOSITION, downloadedFile.getContentDisposition())
+                    .body(downloadedFile.getContent());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(("Error: " + e.getMessage()).getBytes());
@@ -209,4 +203,5 @@ public class DocumentController {
                     .body("Failed to trigger synchronization: " + e.getMessage());
         }
     }
+
 }

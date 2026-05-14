@@ -68,14 +68,27 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
                 .orTimeout(workflowProperty.getRequestTimeoutSeconds(), TimeUnit.SECONDS);
     }
 
+    /**
+     * Retrieves an existing stateful workflow for a conversation or creates a new one.
+     * Implements a simple LRU-style cache with timeout expiration.
+     *
+     * @param conversationId the chat ID
+     * @param userId the user ID
+     * @return the stateful workflow instance
+     */
     @Override
     public SecuredEnhancedUnifiedWorkflow getOrCreateConversation(String conversationId, java.util.UUID userId) {
         String cacheKey = cacheKey(conversationId, userId);
+        
+        // Use ConcurrentHashMap.compute to ensure atomic updates to the conversation cache
         CachedConversation cached = activeConversations.compute(cacheKey, (key, existing) -> {
+            // Check if conversation exists and hasn't expired
             if (existing != null && !existing.isExpired(workflowProperty.getConversationTimeoutSeconds())) {
-                existing.touch();
+                existing.touch(); // Update last access time
                 return existing;
             }
+            
+            // Otherwise, initialize a new stateful workflow for this conversation
             chatHistoryService.startNewChatWithId(conversationId, userId);
             return new CachedConversation(new SecuredEnhancedUnifiedWorkflowImpl(
                     baseWorkflow,
@@ -85,6 +98,8 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
                     workflowProperty.getRecentMessageLimit()
             ));
         });
+        
+        // Trigger background cleanup based on access frequency
         cleanupOccasionally();
         return cached.workflow();
     }
