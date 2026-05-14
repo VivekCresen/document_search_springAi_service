@@ -191,4 +191,135 @@ class SecuredRagPipelineImplTest {
         when(requestSpec.call()).thenReturn(callSpec);
         when(callSpec.content()).thenReturn(response);
     }
+
+    // -------------------------------------------------------------------------
+    // Additional coverage tests
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("answerQuestionWithSecurity: filters unstable file URIs")
+    void answerQuestionWithSecurity_filtersUnstable() {
+        String question = "What?";
+        String username = "user";
+        List<SearchResultDocument> prefetchedDocs = List.of(
+                SearchResultDocument.builder().source("a.pdf").content("A").blobUri("blob://a.pdf").build(),
+                SearchResultDocument.builder().source("b.pdf").content("B").blobUri("blob://b.pdf").build()
+        );
+        // Mark only a.pdf as unstable → only b.pdf stays
+        when(userAccessService.getRestrictedFolders(username)).thenReturn(Collections.emptyList());
+        when(userAccessService.getUnstableFileUris()).thenReturn(List.of("blob://a.pdf"));
+
+        mockChatClientResponse("{\"answer\": \"Only B.\", \"raw_extractions\": []}");
+        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), anyLong()))
+                .thenReturn(Map.of());
+
+        DocumentAnswer result = service.answerQuestionWithSecurity(question, username, prefetchedDocs, "conv1", 1, 1L);
+        assertThat(result.getAnswer()).isEqualTo("Only B.");
+    }
+
+    @Test
+    @DisplayName("answerQuestionWithSecurity: null prefetchedDocs → no accessible documents")
+    void answerQuestionWithSecurity_nullDocs() {
+        lenient().when(userAccessService.getRestrictedFolders(anyString())).thenReturn(Collections.emptyList());
+        lenient().when(userAccessService.getUnstableFileUris()).thenReturn(Collections.emptyList());
+
+        DocumentAnswer result = service.answerQuestionWithSecurity("q", "user", null, "c", 1, 1L);
+        assertThat(result.getAnswer()).isEqualTo(Common.NO_ACCESSIBLE_DOCUMENTS_RESPONSE);
+    }
+
+    @Test
+    @DisplayName("answerQuestionWithSecurity: LLM returns null content → falls back to NO_LLM_CONFIGURED_JSON")
+    void answerQuestionWithSecurity_llmNullContent() {
+        String username = "user";
+        List<SearchResultDocument> docs = List.of(
+                SearchResultDocument.builder().source("a.pdf").content("Content").build()
+        );
+        when(userAccessService.getRestrictedFolders(username)).thenReturn(Collections.emptyList());
+        when(userAccessService.getUnstableFileUris()).thenReturn(Collections.emptyList());
+
+        ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.CallResponseSpec callSpec = mock(ChatClient.CallResponseSpec.class);
+        when(chatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.user(anyString())).thenReturn(requestSpec);
+        when(requestSpec.call()).thenReturn(callSpec);
+        when(callSpec.content()).thenReturn(null);  // null content
+
+        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), anyLong()))
+                .thenReturn(Collections.emptyMap());
+
+        DocumentAnswer result = service.answerQuestionWithSecurity("q", username, docs, "c", 1, 1L);
+        // null content → uses NO_LLM_CONFIGURED_JSON fallback → parsed as raw answer
+        assertThat(result.getAnswer()).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("answerQuestionWithSecurity: docs with no content are skipped (empty source)")
+    void answerQuestionWithSecurity_docsWithNoContent_skipped() {
+        String username = "user";
+        List<SearchResultDocument> docs = List.of(
+                SearchResultDocument.builder().source("empty.pdf").content("   ").build()  // blank content
+        );
+        when(userAccessService.getRestrictedFolders(username)).thenReturn(Collections.emptyList());
+        when(userAccessService.getUnstableFileUris()).thenReturn(Collections.emptyList());
+
+        DocumentAnswer result = service.answerQuestionWithSecurity("q", username, docs, "c", 1, 1L);
+        assertThat(result.getAnswer()).isEqualTo(Common.NO_ACCESSIBLE_DOCUMENTS_RESPONSE);
+    }
+
+    @Test
+    @DisplayName("answerQuestionWithSecurity: extractions with verified text generate citations")
+    void answerQuestionWithSecurity_extractionsValidated() {
+        String username = "user";
+        List<SearchResultDocument> docs = List.of(
+                SearchResultDocument.builder().source("manual.pdf").content("Exact verbatim text here.").build()
+        );
+        when(userAccessService.getRestrictedFolders(username)).thenReturn(Collections.emptyList());
+        when(userAccessService.getUnstableFileUris()).thenReturn(Collections.emptyList());
+
+        String llmJson = """
+            {
+              "answer": "Good answer",
+              "raw_extractions": [
+                {"exact_text": "Exact verbatim text here.", "source": "manual.pdf", "page": "2", "explains": "Key finding"}
+              ]
+            }
+            """;
+        mockChatClientResponse(llmJson);
+        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), anyLong()))
+                .thenReturn(Map.of("1", Map.of("source", "manual.pdf")));
+
+        DocumentAnswer result = service.answerQuestionWithSecurity("q", username, docs, "c", 1, 1L);
+
+        assertThat(result.getAnswer()).isEqualTo("Good answer");
+        assertThat(result.getCitations()).containsKey("1");
+    }
+
+    @Test
+    @DisplayName("answerQuestionWithSecurity: extraction with no matching source is discarded")
+    void answerQuestionWithSecurity_extractionNoMatchingSource() {
+        String username = "user";
+        List<SearchResultDocument> docs = List.of(
+                SearchResultDocument.builder().source("real.pdf").content("This is the real content.").build()
+        );
+        when(userAccessService.getRestrictedFolders(username)).thenReturn(Collections.emptyList());
+        when(userAccessService.getUnstableFileUris()).thenReturn(Collections.emptyList());
+
+        // LLM extracts from a source that doesn't exist in our docs
+        String llmJson = """
+            {
+              "answer": "Some answer",
+              "raw_extractions": [
+                {"exact_text": "ghost text", "source": "nonexistent.pdf", "page": "1", "explains": "???"}
+              ]
+            }
+            """;
+        mockChatClientResponse(llmJson);
+        when(citationManager.createCitationsFromPassages(anyList(), anyList(), anyString(), anyInt(), anyLong()))
+                .thenReturn(Collections.emptyMap());
+
+        DocumentAnswer result = service.answerQuestionWithSecurity("q", username, docs, "c", 1, 1L);
+        // No validated extractions → empty citations
+        assertThat(result.getCitations()).isEmpty();
+    }
 }
+

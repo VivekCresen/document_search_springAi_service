@@ -56,7 +56,7 @@ class UserAccessServiceImplTest {
     @Test
     @DisplayName("getRestrictedFolders: filters out null folder IDs")
     void getRestrictedFolders_filtersNulls() {
-        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(List.of(1, null, 3));
+        when(userMappingRepository.findRestrictedFolderIds("vivek")).thenReturn(java.util.Arrays.asList(1, null, 3));
 
         List<String> result = service.getRestrictedFolders("vivek");
 

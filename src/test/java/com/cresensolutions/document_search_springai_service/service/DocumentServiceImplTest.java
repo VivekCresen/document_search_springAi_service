@@ -36,6 +36,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import com.azure.storage.blob.specialized.BlobInputStream;
+import org.springframework.core.io.Resource;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -318,4 +320,148 @@ class DocumentServiceImplTest {
         // Verify that tree nodes (folder, doc, file.pdf) were saved
         verify(prestageDocumentRepository, atLeast(3)).save(any(PrestageDocument.class));
     }
+
+    // -------------------------------------------------------------------------
+    // downloadFileByDocumentId
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("downloadFileByDocumentId: looks up blob and returns stream")
+    void downloadFileByDocumentId_success() {
+        FileMetadata meta = FileMetadata.builder().blobName("folder/doc/file.pdf").build();
+        when(fileMetadataRepository.findByDocumentId("docId")).thenReturn(Optional.of(meta));
+        when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
+
+        ByteArrayOutputStream result = service.downloadFileByDocumentId("docId");
+
+        verify(blobClient).downloadStream(any(ByteArrayOutputStream.class));
+        assertThat(result).isNotNull();
+    }
+
+    // -------------------------------------------------------------------------
+    // downloadDocument (Resource)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("downloadDocument: returns InputStreamResource from blob client")
+    void downloadDocument_success() {
+        FileMetadata meta = FileMetadata.builder().blobName("folder/file.pdf").build();
+        when(fileMetadataRepository.findByDocumentId("docId")).thenReturn(Optional.of(meta));
+        when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
+        BlobInputStream blobInputStream = mock(BlobInputStream.class);
+        when(blobClient.openInputStream()).thenReturn(blobInputStream);
+
+        Resource result = service.downloadDocument("docId");
+
+        assertThat(result).isNotNull();
+        assertThat(result.isReadable()).isTrue();
+    }
+
+    // -------------------------------------------------------------------------
+    // getDownloadedDocument
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("getDownloadedDocument: wraps filename and resource into DownloadedDocument")
+    void getDownloadedDocument_success() {
+        FilePath fp = FilePath.of(List.of("folder", "file.pdf"));
+        FileMetadata meta = FileMetadata.builder().blobName("folder/file.pdf").filepath(fp).build();
+        when(fileMetadataRepository.findByDocumentId("docId")).thenReturn(Optional.of(meta));
+        when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
+        BlobInputStream blobInputStream2 = mock(BlobInputStream.class);
+        when(blobClient.openInputStream()).thenReturn(blobInputStream2);
+
+        var result = service.getDownloadedDocument("docId");
+
+        assertThat(result.getFilename()).isEqualTo("file.pdf");
+        assertThat(result.getResource()).isNotNull();
+    }
+
+    // -------------------------------------------------------------------------
+    // getFilename
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("getFilename: returns filename from metadata")
+    void getFilename_found() {
+        FilePath fp = FilePath.of(List.of("folder", "report.pdf"));
+        FileMetadata meta = FileMetadata.builder().filepath(fp).build();
+        when(fileMetadataRepository.findByDocumentId("docId")).thenReturn(Optional.of(meta));
+
+        assertThat(service.getFilename("docId")).isEqualTo("report.pdf");
+    }
+
+    @Test
+    @DisplayName("getFilename: returns 'document' when metadata not found")
+    void getFilename_notFound() {
+        when(fileMetadataRepository.findByDocumentId("bad")).thenReturn(Optional.empty());
+        assertThat(service.getFilename("bad")).isEqualTo("document");
+    }
+
+    // -------------------------------------------------------------------------
+    // getFilesByFolder
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("getFilesByFolder: delegates to repository")
+    void getFilesByFolder_success() {
+        List<FileMetadata> expected = List.of(FileMetadata.builder().build());
+        when(fileMetadataRepository.findByFolderId("folder1")).thenReturn(expected);
+
+        assertThat(service.getFilesByFolder("folder1")).isSameAs(expected);
+    }
+
+    // -------------------------------------------------------------------------
+    // fileUploader / fileDownloader (delegation methods)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("fileUploader: delegates to azureFileUploader and returns true on success")
+    void fileUploader_success() throws IOException {
+        FilePath fp = FilePath.of(List.of("folder", "file.pdf"));
+        when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
+        when(blobClient.exists()).thenReturn(false);
+
+        try (java.io.InputStream is = new java.io.ByteArrayInputStream("content".getBytes())) {
+            boolean result = service.fileUploader(is, fp, "test-container");
+            assertThat(result).isTrue();
+            verify(blobClient).upload(any(java.io.InputStream.class), eq(true));
+        }
+    }
+
+    @Test
+    @DisplayName("fileDownloader: delegates to downloadByBlobName using FilePath")
+    void fileDownloader_success() {
+        FilePath fp = FilePath.of(List.of("folder", "file.pdf"));
+        when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
+
+        ByteArrayOutputStream result = service.fileDownloader(fp, "test-container");
+
+        verify(blobClient).downloadStream(any(ByteArrayOutputStream.class));
+        assertThat(result).isNotNull();
+    }
+
+    // -------------------------------------------------------------------------
+    // getDocumentLinks
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("getDocumentLinks: generates SAS links for view and download")
+    void getDocumentLinks_success() {
+        FilePath fp = FilePath.of(List.of("folder", "report.pdf"));
+        FileMetadata meta = FileMetadata.builder().blobName("folder/report.pdf").filepath(fp).build();
+        when(fileMetadataRepository.findByDocumentId("docId")).thenReturn(Optional.of(meta));
+        when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
+        when(blobClient.getBlobUrl()).thenReturn("https://account.blob.core.windows.net/container/folder/report.pdf");
+        when(blobClient.generateSas(any(com.azure.storage.blob.sas.BlobServiceSasSignatureValues.class))).thenReturn("sig=token123");
+        when(cloudProperty.getBlobSasExpiresInSeconds()).thenReturn(3600L);
+
+        var result = service.getDocumentLinks("docId");
+
+        assertThat(result.getDocumentId()).isEqualTo("docId");
+        assertThat(result.getFileName()).isEqualTo("report.pdf");
+        assertThat(result.getDownloadLink()).contains("sig=token123");
+        assertThat(result.getViewLink()).contains("sig=token123");
+    }
 }
+
