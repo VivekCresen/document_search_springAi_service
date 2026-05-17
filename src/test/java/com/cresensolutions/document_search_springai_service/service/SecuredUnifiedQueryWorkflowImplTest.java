@@ -43,6 +43,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
     @Mock SchemaRegistryService schemaRegistryService;
     @Mock SemanticRankerService semanticRankerService;
     @Mock UserAccessService userAccessService;
+    @Mock CommonResponseService commonResponseService;
     @Mock(answer = Answers.RETURNS_DEEP_STUBS) ChatClient chatClient;
 
     SyncTaskExecutor taskExecutor = new SyncTaskExecutor();
@@ -57,7 +58,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
                 standaloneQueryService, securedIntentClassifier, securedRagPipeline,
                 flatSourceClassifier, sqlConverterService, sqlExecutorService,
                 resultsToNlpService, schemaRegistryService, semanticRankerService,
-                chatClients, userAccessService, taskExecutor
+                chatClients, userAccessService, commonResponseService, taskExecutor
         );
     }
 
@@ -67,7 +68,11 @@ class SecuredUnifiedQueryWorkflowImplTest {
         ic.setResponseType(Common.RESPONSE_TYPE_NLP_SUMMARY);
         ic.setConfidence(0.9);
         ic.setReasoning("test");
-        ic.setPrefetchedDocs(List.of());
+        if (Common.INTENT_DOCUMENT.equals(intent)) {
+            ic.setPrefetchedDocs(List.of(SearchResultDocument.builder().source("test.pdf").build()));
+        } else {
+            ic.setPrefetchedDocs(List.of());
+        }
         return ic;
     }
 
@@ -78,6 +83,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
                 .thenReturn(List.of());
         when(securedIntentClassifier.classifyIntent(anyString(), anyString(), anyList()))
                 .thenReturn(classificationFor(intent));
+        when(commonResponseService.getCommonResponse(anyString())).thenReturn(java.util.Optional.empty());
     }
 
     @Test
@@ -208,6 +214,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
     void processQuestion_databasePath_detailedRecords() {
         IntentClassification ic = classificationFor(Common.INTENT_DATABASE);
         ic.setResponseType(Common.RESPONSE_TYPE_DETAILED_RECORDS);
+        ic.setPrefetchedDocs(List.of()); // Database intent doesn't need docs
         when(standaloneQueryService.createStandaloneQuery(anyString(), anyString())).thenReturn("q");
         when(userAccessService.createSearchFilter(anyString())).thenReturn("filter");
         when(securedIntentClassifier.searchRelevantDocumentsWithSecurity(anyString(), anyString(), anyInt()))
@@ -231,5 +238,18 @@ class SecuredUnifiedQueryWorkflowImplTest {
         Map<String, Object> result = service.processQuestion("list all", "user", "", "conv1", 1, USER_ID);
         assertThat(result.get(Common.RESULT_INTERNAL_TYPE)).isEqualTo(Common.TABLE_RESPONSE_TYPE);
         assertThat(result.get(Common.RESULT_TEXT_PAYLOAD)).isEqualTo("Here are the records.");
+    }
+
+    @Test
+    @DisplayName("processQuestion: hardcoded common response bypasses all LLM logic")
+    void processQuestion_commonResponseBypass() {
+        when(commonResponseService.getCommonResponse("hi")).thenReturn(java.util.Optional.of("Hello!"));
+
+        Map<String, Object> result = service.processQuestion("hi", "user", "", "conv1", 1, USER_ID);
+
+        assertThat(result.get(Common.RESULT_NLP_ANSWER)).isEqualTo("Hello!");
+        assertThat(result.get(Common.WORKFLOW)).isEqualTo("hardcoded_common_response");
+        verify(standaloneQueryService, never()).createStandaloneQuery(anyString(), anyString());
+        verify(securedIntentClassifier, never()).classifyIntent(anyString(), anyString(), anyList());
     }
 }

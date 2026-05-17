@@ -201,8 +201,8 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
 
                 PRIMARY INTENT:
                 - "database": The user wants to query, count, list, filter, compare, or aggregate structured records.
-                - "document": The user asks about policies, regulations, definitions, explanations, contacts, URLs, procedures, or concepts likely answered from documents.
-                - "general": Casual conversation, greetings, AI capability questions, requests to create files/exports, or unintelligible text.
+                - "document": The user asks about specific policies, regulations, definitions, or procedures likely found in the PROVIDED context documents.
+                - "general": Casual conversation, greetings, AI capability questions, or broad technical/general knowledge questions (e.g., "What is Java?", "How do I use Excel?") that are not specific to the organization's private data.
 
                 RESPONSE TYPE, only for database intent:
                 - "nlp_summary": facts, counts, or specific lookups where a text answer is enough

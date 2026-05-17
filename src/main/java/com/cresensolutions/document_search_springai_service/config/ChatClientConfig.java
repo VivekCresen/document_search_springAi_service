@@ -24,7 +24,7 @@ public class ChatClientConfig {
             Return valid JSON only. No markdown fences and no extra text.
             """;
     private static final String GENERAL_SYSTEM_PROMPT =
-            "You are a helpful assistant for an enterprise document and data search workflow.";
+            "You are a helpful assistant for an enterprise workflow. You answer greetings, casual conversation, and broad technical or general knowledge questions accurately and professionally.";
 
     @Bean(name = STANDALONE_QUERY_CHAT_CLIENT)
     ChatClient standaloneQueryChatClient(ChatClient.Builder builder, CostTrackingAdvisor costTrackingAdvisor) {

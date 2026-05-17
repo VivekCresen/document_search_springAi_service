@@ -7,6 +7,7 @@ import com.cresensolutions.document_search_springai_service.dto.IntentClassifica
 import com.cresensolutions.document_search_springai_service.dto.SearchResultDocument;
 import com.cresensolutions.document_search_springai_service.dto.SqlExecutionResult;
 import com.cresensolutions.document_search_springai_service.dto.SqlGenerationResult;
+import com.cresensolutions.document_search_springai_service.service.CommonResponseService;
 import com.cresensolutions.document_search_springai_service.service.FlatSourceClassifier;
 import com.cresensolutions.document_search_springai_service.service.ResultsToNlpService;
 import com.cresensolutions.document_search_springai_service.service.SecuredIntentClassifier;
@@ -55,6 +56,7 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
     private final SemanticRankerService semanticRankerService;
     private final Map<String, ChatClient> chatClients;
     private final com.cresensolutions.document_search_springai_service.service.UserAccessService userAccessService;
+    private final CommonResponseService commonResponseService;
     @org.springframework.beans.factory.annotation.Qualifier(Common.TASK_EXECUTOR)
     private final java.util.concurrent.Executor taskExecutor;
 
@@ -78,6 +80,24 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
             Integer questionId,
             java.util.UUID userId
     ) {
+        // Step 0: Check for hardcoded common responses to save tokens and time
+        java.util.Optional<String> commonAnswer = commonResponseService.getCommonResponse(question);
+        if (commonAnswer.isPresent()) {
+            log.info("Handled common question '{}' without LLM", question);
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put(Common.RESULT_SUCCESS, true);
+            result.put(Common.WORKFLOW, "hardcoded_common_response");
+            result.put(Common.RESULT_ORIGINAL_QUESTION, question);
+            result.put(Common.RESULT_INTENT, Common.INTENT_GENERAL);
+            result.put(Common.RESULT_NLP_ANSWER, commonAnswer.get());
+            result.put(Common.RESULT_TEXT_PAYLOAD, commonAnswer.get());
+            result.put(Common.RESULT_INTERNAL_TYPE, Common.TEXT_RESPONSE_TYPE);
+            result.put(Common.RESULT_CITATIONS, Collections.emptyMap());
+            result.put(Common.RESULT_CONVERSATION_ID, conversationId);
+            result.put(Common.RESULT_QUESTION_ID, questionId);
+            return result;
+        }
+
         // Phase 0: Generate a standalone query in parallel with security filter retrieval
         java.util.concurrent.CompletableFuture<String> standaloneQueryFuture = java.util.concurrent.CompletableFuture.supplyAsync(
                 () -> standaloneQueryService.createStandaloneQuery(question, conversationContext),
@@ -124,7 +144,15 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
         result.put(Common.RESULT_USERNAME, username);
 
         // Phase 3: Route to the sub-pipeline based on the detected intent
-        if (Common.INTENT_DOCUMENT.equals(classification.getIntent())) {
+        // FALLBACK: If intent is "document" but no documents were found, treat as "general"
+        String effectiveIntent = classification.getIntent();
+        if (Common.INTENT_DOCUMENT.equals(effectiveIntent) && 
+            (classification.getPrefetchedDocs() == null || classification.getPrefetchedDocs().isEmpty())) {
+            log.debug("No documents found for document intent; falling back to general knowledge.");
+            effectiveIntent = Common.INTENT_GENERAL;
+        }
+
+        if (Common.INTENT_DOCUMENT.equals(effectiveIntent)) {
             // Document RAG Path
             DocumentAnswer documentAnswer = securedRagPipeline.answerQuestionWithSecurity(
                     standaloneQuery,
@@ -134,11 +162,22 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
                     questionId,
                     userId
             );
-            result.put(Common.WORKFLOW, Common.WORKFLOW_DOCUMENT);
+
+            // Secondary Fallback: If RAG explicitly says no documents found, try general knowledge
+            if (Common.NO_ACCESSIBLE_DOCUMENTS_RESPONSE.equals(documentAnswer.getAnswer())) {
+                log.debug("RAG pipeline returned no documents; attempting general knowledge fallback.");
+                String fallbackAnswer = generateGeneralAnswer(standaloneQuery);
+                result.put(Common.WORKFLOW, Common.WORKFLOW_GENERAL + "_fallback");
+                result.put(Common.RESULT_NLP_ANSWER, fallbackAnswer);
+                result.put(Common.RESULT_TEXT_PAYLOAD, fallbackAnswer);
+            } else {
+                result.put(Common.WORKFLOW, Common.WORKFLOW_DOCUMENT);
+                result.put(Common.RESULT_NLP_ANSWER, documentAnswer.getAnswer());
+                result.put(Common.RESULT_TEXT_PAYLOAD, documentAnswer.getAnswer());
+            }
             result.put(Common.RESULT_INTERNAL_TYPE, Common.TEXT_RESPONSE_TYPE);
-            result.put(Common.RESULT_NLP_ANSWER, documentAnswer.getAnswer());
             result.put(Common.RESULT_CITATIONS, documentAnswer.getCitations());
-        } else if (Common.INTENT_GENERAL.equals(classification.getIntent())) {
+        } else if (Common.INTENT_GENERAL.equals(effectiveIntent)) {
             // General Conversation Path
             String answer = generateGeneralAnswer(standaloneQuery);
             result.put(Common.WORKFLOW, Common.WORKFLOW_GENERAL);
@@ -330,7 +369,7 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
         }
         try {
             String answer = chatClient.prompt()
-                    .user("Reply helpfully to: " + question)
+                    .user(question)
                     .call()
                     .content();
             return answer == null || answer.isBlank() ? Common.GENERAL_GREETING_RESPONSE : answer.trim();
