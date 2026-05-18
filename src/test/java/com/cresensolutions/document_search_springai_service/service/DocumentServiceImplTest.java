@@ -15,6 +15,7 @@ import com.cresensolutions.document_search_springai_service.domain.PrestageDocum
 import com.cresensolutions.document_search_springai_service.repository.FileInIndexRepository;
 import com.cresensolutions.document_search_springai_service.repository.FileMetadataRepository;
 import com.cresensolutions.document_search_springai_service.repository.PrestageDocumentRepository;
+import com.cresensolutions.document_search_springai_service.repository.UserRepository;
 import com.cresensolutions.document_search_springai_service.service.Impl.DocumentServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,6 +55,7 @@ class DocumentServiceImplTest {
     @Mock PrestageDocumentRepository prestageDocumentRepository;
     @Mock CloudProperty cloudProperty;
     @Mock ObjectMapper objectMapper;
+    @Mock UserRepository userRepository;
 
     @InjectMocks DocumentServiceImpl service;
 
@@ -63,6 +65,7 @@ class DocumentServiceImplTest {
         lenient().when(cloudProperty.getAccountUrl()).thenReturn("https://account.blob.core.windows.net/");
         lenient().when(blobServiceClient.getBlobContainerClient(anyString())).thenReturn(blobContainerClient);
         lenient().when(blobContainerClient.exists()).thenReturn(true);
+        lenient().when(userRepository.findByUserNameOrEmail(anyString(), anyString())).thenReturn(Optional.empty());
         // init() will fire here
         service.init();
     }
@@ -580,6 +583,44 @@ class DocumentServiceImplTest {
         assertThat(result.getFileName()).isEqualTo("report.pdf");
         assertThat(result.getDownloadLink()).contains("sig=token123");
         assertThat(result.getViewLink()).contains("sig=token123");
+    }
+
+    @Test
+    @DisplayName("uploadMultipleDocuments: successfully uploads all files in array")
+    void uploadMultipleDocuments_success() throws IOException {
+        FilePath fp1 = FilePath.of(Arrays.asList("folder", "file1.pdf"));
+        FilePath fp2 = FilePath.of(Arrays.asList("folder", "file2.pdf"));
+        List<FilePath> fileInfos = Arrays.asList(fp1, fp2);
+
+        MockMultipartFile file1 = new MockMultipartFile("files", "file1.pdf", "application/pdf", "bytes1".getBytes());
+        MockMultipartFile file2 = new MockMultipartFile("files", "file2.pdf", "application/pdf", "bytes2".getBytes());
+        MockMultipartFile[] files = new MockMultipartFile[]{file1, file2};
+
+        when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
+        when(blobClient.exists()).thenReturn(false);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"filePath\":[]}");
+        when(fileMetadataRepository.findByFilePathJson(any())).thenReturn(Optional.empty());
+        when(fileMetadataRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        List<Boolean> results = service.uploadMultipleDocuments(fileInfos, files, "vivek");
+
+        assertThat(results).hasSize(2).containsOnly(true);
+        verify(fileMetadataRepository, times(2)).save(any());
+    }
+
+    @Test
+    @DisplayName("uploadMultipleDocuments: throws IllegalArgumentException when sizes mismatch")
+    void uploadMultipleDocuments_mismatchedSize_throws() {
+        FilePath fp1 = FilePath.of(Arrays.asList("folder", "file1.pdf"));
+        List<FilePath> fileInfos = Arrays.asList(fp1);
+
+        MockMultipartFile file1 = new MockMultipartFile("files", "file1.pdf", "application/pdf", "bytes1".getBytes());
+        MockMultipartFile file2 = new MockMultipartFile("files", "file2.pdf", "application/pdf", "bytes2".getBytes());
+        MockMultipartFile[] files = new MockMultipartFile[]{file1, file2};
+
+        assertThatThrownBy(() -> service.uploadMultipleDocuments(fileInfos, files, "vivek"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("counts must match");
     }
 }
 

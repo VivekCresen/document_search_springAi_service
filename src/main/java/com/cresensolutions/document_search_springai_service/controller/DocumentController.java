@@ -17,6 +17,11 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 
 /**
@@ -33,6 +38,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class DocumentController {
 
     private final DocumentService documentService;
+    private final ObjectMapper objectMapper;
 
     /**
      * Uploads a document to Azure Blob Storage using a hierarchical JSON path.
@@ -56,6 +62,54 @@ public class DocumentController {
             log.error("Failed to upload document", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to upload file: " + e.getMessage());
+        }
+    }
+
+
+
+    /**
+     * Uploads multiple documents to Azure Blob Storage.
+     *
+     * @param fileInfosJson the JSON string representing list of FilePath configurations
+     * @param files          the array of multipart files to upload
+     * @param username       the username of the uploader
+     * @return ResponseEntity with results of each file upload
+     */
+    @PostMapping(value = "/upload-multiple", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload multiple files", description = "Upload multiple files to Azure Blob Storage using a list of hierarchical JSON paths")
+    public ResponseEntity<?> uploadMultipleDocuments(
+            @RequestPart("fileInfos") String fileInfosJson,
+            @RequestPart("files") MultipartFile[] files,
+            @RequestParam("username") String username) {
+        try {
+            List<FilePath> fileInfos = objectMapper.readValue(
+                    fileInfosJson,
+                    new TypeReference<List<FilePath>>() {}
+            );
+
+            if (fileInfos == null || files == null || fileInfos.size() != files.length) {
+                return ResponseEntity.badRequest().body("The number of files must match the number of file metadata configurations.");
+            }
+
+            List<Boolean> results = documentService.uploadMultipleDocuments(fileInfos, files, username);
+            boolean anySuccess = results.contains(true);
+            boolean allSuccess = !results.contains(false);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("results", results);
+            response.put("totalFiles", files.length);
+
+            if (allSuccess) {
+                return ResponseEntity.ok(response);
+            } else if (anySuccess) {
+                return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(response);
+            } else {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            }
+        } catch (Exception e) {
+            log.error("Failed to upload multiple documents", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to upload files: " + e.getMessage());
         }
     }
 

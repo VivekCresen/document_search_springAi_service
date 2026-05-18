@@ -119,6 +119,27 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
         return uploadAndSaveFile(fileInfo, input, Common.FILE_STATUS_UPLOADED, loggedInUser);
     }
 
+    @Override
+    @Transactional
+    @CacheEvict(value = {"fileMetadata", "blobNames", "stableFiles"}, allEntries = true)
+    public List<Boolean> uploadMultipleDocuments(List<FilePath> fileInfos, MultipartFile[] files, String loggedInUser) throws IOException {
+        if (fileInfos == null || files == null || fileInfos.size() != files.length) {
+            throw new IllegalArgumentException("Files and file info counts must match");
+        }
+
+        List<Boolean> results = new java.util.ArrayList<>();
+        for (int i = 0; i < files.length; i++) {
+            try {
+                boolean success = uploadAndSaveFile(fileInfos.get(i), files[i], Common.FILE_STATUS_UPLOADED, loggedInUser);
+                results.add(success);
+            } catch (Exception e) {
+                log.error("Failed to upload file at index " + i + ": " + files[i].getOriginalFilename(), e);
+                results.add(false);
+            }
+        }
+        return results;
+    }
+
     // =========================================================================
     // Public API — Download
     // =========================================================================

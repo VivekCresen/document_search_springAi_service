@@ -39,6 +39,8 @@ public interface DocumentService {
 
     Boolean uploadDocument(FilePath fileInfo, MultipartFile input, String loggedInUser) throws IOException;
 
+    List<Boolean> uploadMultipleDocuments(List<FilePath> fileInfos, MultipartFile[] files, String loggedInUser) throws IOException;
+
     /**
      * Downloads a file content directly from Azure Storage using a FilePath.
      * Use this when you want to bypass the database lookup entirely.
