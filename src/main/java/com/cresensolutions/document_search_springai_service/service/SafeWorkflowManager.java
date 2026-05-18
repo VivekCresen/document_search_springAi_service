@@ -22,6 +22,7 @@ public interface SafeWorkflowManager {
      */
     Map<String, Object> processQuestion(
             String conversationId,
+            String requestId,
             String question,
             String username,
             Integer questionId,
@@ -33,6 +34,7 @@ public interface SafeWorkflowManager {
      */
     CompletableFuture<Map<String, Object>> processQuestionAsync(
             String conversationId,
+            String requestId,
             String question,
             String username,
             Integer questionId,

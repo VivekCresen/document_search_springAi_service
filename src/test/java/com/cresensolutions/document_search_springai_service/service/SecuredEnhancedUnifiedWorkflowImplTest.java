@@ -46,7 +46,7 @@ class SecuredEnhancedUnifiedWorkflowImplTest {
         when(baseWorkflow.processQuestion("question", "user", "prior context", "conv1", 1, USER_ID))
                 .thenReturn(workflowResult);
 
-        Map<String, Object> result = service.processQuestionWithHistory("question", "user", 1);
+        Map<String, Object> result = service.processQuestionWithHistory("reqId", "question", "user", 1);
 
         assertThat(result).isSameAs(workflowResult);
 
@@ -69,7 +69,7 @@ class SecuredEnhancedUnifiedWorkflowImplTest {
         when(baseWorkflow.processQuestion(anyString(), anyString(), anyString(), anyString(), anyInt(), any(java.util.UUID.class)))
                 .thenReturn(Map.of("nlp_answer", "answer"));
 
-        service.processQuestionWithHistory("q", "user", 1);
+        service.processQuestionWithHistory("reqId", "q", "user", 1);
 
         ArgumentCaptor<String> standaloneCaptor = ArgumentCaptor.forClass(String.class);
         verify(chatHistoryService).appendExchange(anyString(), any(java.util.UUID.class), anyString(),
@@ -90,7 +90,7 @@ class SecuredEnhancedUnifiedWorkflowImplTest {
         when(baseWorkflow.processQuestion(anyString(), anyString(), anyString(), anyString(), anyInt(), any(java.util.UUID.class)))
                 .thenReturn(workflowResult);
 
-        service.processQuestionWithHistory("q", "user", 1);
+        service.processQuestionWithHistory("reqId", "q", "user", 1);
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> metaCaptor = ArgumentCaptor.forClass(Map.class);

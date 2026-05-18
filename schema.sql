@@ -131,11 +131,15 @@ CREATE TABLE IF NOT EXISTS prestage.files_in_index (
 
     blob_uri TEXT NOT NULL UNIQUE,
 
+    file_name TEXT,
+
     status VARCHAR(50) NOT NULL DEFAULT 'ingestion_inp',
 
     folder_id BIGINT,
 
     indexed_by UUID,
+
+    last_modified_blob TIMESTAMPTZ,
 
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -149,6 +153,169 @@ CREATE TABLE IF NOT EXISTS prestage.files_in_index (
         REFERENCES prestage.users(id)
         ON DELETE SET NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_files_in_index_status
+    ON prestage.files_in_index(status);
+
+CREATE INDEX IF NOT EXISTS idx_files_in_index_folder_status
+    ON prestage.files_in_index(folder_id, status);
+
+ALTER TABLE prestage.files_in_index
+    ADD COLUMN IF NOT EXISTS file_name TEXT;
+
+ALTER TABLE prestage.files_in_index
+    ADD COLUMN IF NOT EXISTS last_modified_blob TIMESTAMPTZ;
+
+-- =============================================================================
+-- INGESTION JOBS
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS prestage.ingestion_jobs (
+    id BIGSERIAL PRIMARY KEY,
+
+    blob_uri TEXT NOT NULL UNIQUE,
+
+    blob_name TEXT,
+
+    file_name TEXT,
+
+    status VARCHAR(50) NOT NULL DEFAULT 'to_be_ingested',
+
+    attempts INTEGER NOT NULL DEFAULT 0,
+
+    max_attempts INTEGER NOT NULL DEFAULT 3,
+
+    error_message TEXT,
+
+    chunk_count INTEGER NOT NULL DEFAULT 0,
+
+    folder_id BIGINT,
+
+    blob_last_modified TIMESTAMPTZ,
+
+    blob_etag TEXT,
+
+    blob_size_bytes BIGINT,
+
+    indexed_by UUID,
+
+    locked_by VARCHAR(255),
+
+    locked_at TIMESTAMPTZ,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    completed_at TIMESTAMPTZ,
+
+    CONSTRAINT fk_ingestion_jobs_folder
+        FOREIGN KEY (folder_id)
+        REFERENCES prestage.documents(id)
+        ON DELETE SET NULL,
+
+    CONSTRAINT fk_ingestion_jobs_user
+        FOREIGN KEY (indexed_by)
+        REFERENCES prestage.users(id)
+        ON DELETE SET NULL,
+
+    CONSTRAINT chk_ingestion_jobs_status
+        CHECK (
+            status IN (
+                'to_be_ingested',
+                'ingestion_inp',
+                'stable',
+                'failed',
+                'to_be_deleted',
+                'delete_inp',
+                'deleted'
+            )
+        )
+);
+
+CREATE INDEX IF NOT EXISTS idx_ingestion_jobs_status_created
+    ON prestage.ingestion_jobs(status, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_ingestion_jobs_folder
+    ON prestage.ingestion_jobs(folder_id);
+
+ALTER TABLE prestage.ingestion_jobs
+    ADD COLUMN IF NOT EXISTS blob_name TEXT;
+
+ALTER TABLE prestage.ingestion_jobs
+    ADD COLUMN IF NOT EXISTS file_name TEXT;
+
+ALTER TABLE prestage.ingestion_jobs
+    ADD COLUMN IF NOT EXISTS blob_last_modified TIMESTAMPTZ;
+
+ALTER TABLE prestage.ingestion_jobs
+    ADD COLUMN IF NOT EXISTS blob_etag TEXT;
+
+ALTER TABLE prestage.ingestion_jobs
+    ADD COLUMN IF NOT EXISTS blob_size_bytes BIGINT;
+
+-- =============================================================================
+-- INDEXED CHUNKS
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS prestage.indexed_chunks (
+    id BIGSERIAL PRIMARY KEY,
+
+    job_id BIGINT,
+
+    blob_uri TEXT NOT NULL,
+
+    search_document_id TEXT NOT NULL UNIQUE,
+
+    chunk_number INTEGER NOT NULL,
+
+    page_number INTEGER,
+
+    content_hash VARCHAR(128),
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_indexed_chunks_job
+        FOREIGN KEY (job_id)
+        REFERENCES prestage.ingestion_jobs(id)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_indexed_chunks_blob_uri
+    ON prestage.indexed_chunks(blob_uri);
+
+CREATE INDEX IF NOT EXISTS idx_indexed_chunks_job
+    ON prestage.indexed_chunks(job_id);
+
+-- =============================================================================
+-- INDEX AUDIT LOGS
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS prestage.index_audit_logs (
+    id BIGSERIAL PRIMARY KEY,
+
+    job_id BIGINT,
+
+    blob_uri TEXT,
+
+    action VARCHAR(80) NOT NULL,
+
+    status VARCHAR(50) NOT NULL,
+
+    message TEXT,
+
+    metadata JSONB,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_index_audit_logs_job
+        FOREIGN KEY (job_id)
+        REFERENCES prestage.ingestion_jobs(id)
+        ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_index_audit_logs_blob_uri_created
+    ON prestage.index_audit_logs(blob_uri, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_index_audit_logs_job
+    ON prestage.index_audit_logs(job_id);
 
 -- =============================================================================
 -- DB SEARCH SOURCES

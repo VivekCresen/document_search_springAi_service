@@ -7,6 +7,7 @@ import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.models.BlobItem;
 import com.azure.storage.blob.models.BlobItemProperties;
+import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
 import com.cresensolutions.document_search_springai_service.config.CloudProperty;
 import com.cresensolutions.document_search_springai_service.domain.FileInIndex;
 import com.cresensolutions.document_search_springai_service.domain.FileMetadata;
@@ -29,6 +30,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -517,10 +519,10 @@ class DocumentServiceImplTest {
         when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
         when(blobClient.exists()).thenReturn(false);
 
-        try (java.io.InputStream is = new java.io.ByteArrayInputStream("content".getBytes())) {
+        try (InputStream is = new ByteArrayInputStream("content".getBytes())) {
             boolean result = service.fileUploader(is, fp, "test-container");
             assertThat(result).isTrue();
-            verify(blobClient).upload(any(java.io.InputStream.class), eq(true));
+            verify(blobClient).upload(any(InputStream.class), eq(true));
         }
     }
 
@@ -533,7 +535,7 @@ class DocumentServiceImplTest {
         
         doThrow(new RuntimeException("Test Exception")).when(blobClient).upload(any(InputStream.class), eq(true));
 
-        try (java.io.InputStream is = new java.io.ByteArrayInputStream("content".getBytes())) {
+        try (InputStream is = new ByteArrayInputStream("content".getBytes())) {
             boolean result = service.fileUploader(is, fp, "test-container");
             assertThat(result).isFalse();
         }
@@ -574,7 +576,7 @@ class DocumentServiceImplTest {
         when(fileMetadataRepository.findByDocumentId("docId")).thenReturn(Optional.of(meta));
         when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
         when(blobClient.getBlobUrl()).thenReturn("https://account.blob.core.windows.net/container/folder/report.pdf");
-        when(blobClient.generateSas(any(com.azure.storage.blob.sas.BlobServiceSasSignatureValues.class))).thenReturn("sig=token123");
+        when(blobClient.generateSas(any(BlobServiceSasSignatureValues.class))).thenReturn("sig=token123");
         when(cloudProperty.getBlobSasExpiresInSeconds()).thenReturn(3600L);
 
         var result = service.getDocumentLinks("docId");

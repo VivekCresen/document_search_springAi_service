@@ -1,5 +1,6 @@
 package com.cresensolutions.document_search_springai_service.service;
 
+import com.azure.core.util.BinaryData;
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
@@ -9,6 +10,9 @@ import com.cresensolutions.document_search_springai_service.config.CloudProperty
 import com.cresensolutions.document_search_springai_service.dto.DiPageSpan;
 import com.cresensolutions.document_search_springai_service.dto.HighlightedPdfResult;
 import com.cresensolutions.document_search_springai_service.service.Impl.PdfHighlightManagerImpl;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +22,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.awt.Color;
+import java.io.ByteArrayOutputStream;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -84,7 +90,7 @@ class PdfHighlightManagerImplTest {
         // Create a minimal valid PDF in memory using PDFBox
         byte[] pdfBytes = createMinimalPdf();
 
-        com.azure.core.util.BinaryData binaryData = mock(com.azure.core.util.BinaryData.class);
+     BinaryData binaryData = mock(BinaryData.class);
         when(blobClient.downloadContent()).thenReturn(binaryData);
         when(binaryData.toBytes()).thenReturn(pdfBytes);
         when(blobClient.getBlobUrl()).thenReturn("https://account.blob.core.windows.net/container/highlighted_docs/file.pdf");
@@ -108,7 +114,7 @@ class PdfHighlightManagerImplTest {
     void highlight_withDiPageSpans_usesCoordinateStrategy() throws Exception {
         byte[] pdfBytes = createMinimalPdf();
 
-        com.azure.core.util.BinaryData binaryData = mock(com.azure.core.util.BinaryData.class);
+     BinaryData binaryData = mock(BinaryData.class);
         when(blobClient.downloadContent()).thenReturn(binaryData);
         when(binaryData.toBytes()).thenReturn(pdfBytes);
         when(blobClient.getBlobUrl()).thenReturn("https://account.blob.core.windows.net/container/blob.pdf");
@@ -148,7 +154,7 @@ class PdfHighlightManagerImplTest {
     void highlight_fallbackToSentenceAndWordWindows() throws Exception {
         byte[] pdfBytes = createMinimalPdf();
 
-        com.azure.core.util.BinaryData binaryData = mock(com.azure.core.util.BinaryData.class);
+     BinaryData binaryData = mock(BinaryData.class);
         when(blobClient.downloadContent()).thenReturn(binaryData);
         when(binaryData.toBytes()).thenReturn(pdfBytes);
         when(blobClient.getBlobUrl()).thenReturn("https://account.blob.core.windows.net/container/blob.pdf");
@@ -195,7 +201,7 @@ class PdfHighlightManagerImplTest {
         when(encodedBlobClient.downloadContent()).thenThrow(new RuntimeException("Not found"));
         
         when(blobContainerClient.getBlobClient("folder/file name.pdf")).thenReturn(decodedBlobClient);
-        com.azure.core.util.BinaryData binaryData = mock(com.azure.core.util.BinaryData.class);
+     BinaryData binaryData = mock(BinaryData.class);
         when(decodedBlobClient.downloadContent()).thenReturn(binaryData);
         when(binaryData.toBytes()).thenReturn(createMinimalPdf());
         lenient().when(decodedBlobClient.getBlobUrl()).thenReturn("https://example.com/file.pdf");
@@ -215,7 +221,7 @@ class PdfHighlightManagerImplTest {
     @DisplayName("highlightMultiplePassagesInPdf: null color defaults to yellow")
     void highlight_nullColor_usesYellow() throws Exception {
         byte[] pdfBytes = createMinimalPdf();
-        com.azure.core.util.BinaryData binaryData = mock(com.azure.core.util.BinaryData.class);
+     BinaryData binaryData = mock(BinaryData.class);
         when(blobClient.downloadContent()).thenReturn(binaryData);
         when(binaryData.toBytes()).thenReturn(pdfBytes);
         when(blobClient.getBlobUrl()).thenReturn("https://example.com/file.pdf");
@@ -236,52 +242,52 @@ class PdfHighlightManagerImplTest {
     @DisplayName("Reflection: helper methods behavior")
     void reflection_helperMethods() throws Exception {
         // normalizeWhitespace
-        java.lang.reflect.Method normalize = PdfHighlightManagerImpl.class.getDeclaredMethod("normalizeWhitespace", String.class);
+        Method normalize = PdfHighlightManagerImpl.class.getDeclaredMethod("normalizeWhitespace", String.class);
         normalize.setAccessible(true);
         assertThat(normalize.invoke(service, (String) null)).isEqualTo("");
         assertThat(normalize.invoke(service, "  a   b\tc  ")).isEqualTo("a b c");
 
         // hasText
-        java.lang.reflect.Method hasText = PdfHighlightManagerImpl.class.getDeclaredMethod("hasText", String.class);
+        Method hasText = PdfHighlightManagerImpl.class.getDeclaredMethod("hasText", String.class);
         hasText.setAccessible(true);
         assertThat((Boolean) hasText.invoke(service, (String) null)).isFalse();
         assertThat((Boolean) hasText.invoke(service, "   ")).isFalse();
         assertThat((Boolean) hasText.invoke(service, " a ")).isTrue();
 
         // filename
-        java.lang.reflect.Method filename = PdfHighlightManagerImpl.class.getDeclaredMethod("filename", String.class);
+        Method filename = PdfHighlightManagerImpl.class.getDeclaredMethod("filename", String.class);
         filename.setAccessible(true);
         assertThat(filename.invoke(service, "folder/doc.pdf")).isEqualTo("doc.pdf");
         assertThat(filename.invoke(service, "doc.pdf")).isEqualTo("doc.pdf");
 
         // emptyResult
-        java.lang.reflect.Method emptyResult = PdfHighlightManagerImpl.class.getDeclaredMethod("emptyResult");
+        Method emptyResult = PdfHighlightManagerImpl.class.getDeclaredMethod("emptyResult");
         emptyResult.setAccessible(true);
         HighlightedPdfResult res = (HighlightedPdfResult) emptyResult.invoke(service);
         assertThat(res.getDownloadLink()).isEmpty();
 
         // tokens
-        java.lang.reflect.Method tokens = PdfHighlightManagerImpl.class.getDeclaredMethod("tokens", String.class);
+        Method tokens = PdfHighlightManagerImpl.class.getDeclaredMethod("tokens", String.class);
         tokens.setAccessible(true);
         @SuppressWarnings("unchecked")
         Set<String> toks = (Set<String>) tokens.invoke(service, "Hello world, it's me!");
         assertThat(toks).contains("hello", "world");
 
         // tokenOverlapRatio
-        java.lang.reflect.Method overlap = PdfHighlightManagerImpl.class.getDeclaredMethod("tokenOverlapRatio", String.class, String.class);
+        Method overlap = PdfHighlightManagerImpl.class.getDeclaredMethod("tokenOverlapRatio", String.class, String.class);
         overlap.setAccessible(true);
         assertThat((Double) overlap.invoke(service, "a b", "c d")).isEqualTo(0.0);
         assertThat((Double) overlap.invoke(service, "hello world again", "hello universe")).isGreaterThan(0.0);
 
         // sentenceSegments
-        java.lang.reflect.Method sentences = PdfHighlightManagerImpl.class.getDeclaredMethod("sentenceSegments", String.class);
+        Method sentences = PdfHighlightManagerImpl.class.getDeclaredMethod("sentenceSegments", String.class);
         sentences.setAccessible(true);
         @SuppressWarnings("unchecked")
         List<String> segs = (List<String>) sentences.invoke(service, "Hello world. How are you? I am fine!");
         assertThat(segs).hasSize(3).contains("Hello world.", "How are you?", "I am fine!");
 
         // wordWindows
-        java.lang.reflect.Method windows = PdfHighlightManagerImpl.class.getDeclaredMethod("wordWindows", String.class);
+        Method windows = PdfHighlightManagerImpl.class.getDeclaredMethod("wordWindows", String.class);
         windows.setAccessible(true);
         @SuppressWarnings("unchecked")
         List<String> wins = (List<String>) windows.invoke(service, "1 2 3 4 5 6 7 8 9 10 11 12");
@@ -292,18 +298,18 @@ class PdfHighlightManagerImplTest {
     // Helper: creates a minimal 1-page PDF with text using PDFBox
     // -------------------------------------------------------------------------
     private static byte[] createMinimalPdf() throws Exception {
-        try (org.apache.pdfbox.pdmodel.PDDocument doc = new org.apache.pdfbox.pdmodel.PDDocument()) {
-            org.apache.pdfbox.pdmodel.PDPage page = new org.apache.pdfbox.pdmodel.PDPage();
+        try (PDDocument doc = new PDDocument()) {
+            PDPage page = new PDPage();
             doc.addPage(page);
-            try (org.apache.pdfbox.pdmodel.PDPageContentStream cs =
-                         new org.apache.pdfbox.pdmodel.PDPageContentStream(doc, page)) {
+            try (PDPageContentStream cs =
+                         new PDPageContentStream(doc, page)) {
                 cs.beginText();
                 cs.setFont(org.apache.pdfbox.pdmodel.font.PDType1Font.HELVETICA, 12);
                 cs.newLineAtOffset(100, 700);
                 cs.showText("Hello World");
                 cs.endText();
             }
-            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
             doc.save(out);
             return out.toByteArray();
         }

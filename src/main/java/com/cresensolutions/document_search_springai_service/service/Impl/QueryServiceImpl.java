@@ -49,6 +49,7 @@ public class QueryServiceImpl implements QueryService {
         // Delegate the actual processing to the workflow manager
         return workflowManager.processQuestionAsync(
                         conversationId,
+                        data.getRequestId(),
                         data.getQuestion(),
                         data.getEmail(),
                         data.getQuestionId(),

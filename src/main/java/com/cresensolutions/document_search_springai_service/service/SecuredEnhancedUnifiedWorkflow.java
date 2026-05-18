@@ -11,6 +11,7 @@ public interface SecuredEnhancedUnifiedWorkflow {
      * Processes one question and stores the resulting conversation turn.
      */
     Map<String, Object> processQuestionWithHistory(
+            String requestId,
             String question,
             String username,
             Integer questionId

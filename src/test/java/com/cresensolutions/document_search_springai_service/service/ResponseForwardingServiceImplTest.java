@@ -2,6 +2,7 @@ package com.cresensolutions.document_search_springai_service.service;
 
 import com.cresensolutions.document_search_springai_service.config.WorkflowProperty;
 import com.cresensolutions.document_search_springai_service.dto.EnvelopeResponse;
+import com.cresensolutions.document_search_springai_service.dto.ResponseData;
 import com.cresensolutions.document_search_springai_service.service.Impl.ResponseForwardingServiceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -58,7 +59,7 @@ class ResponseForwardingServiceImplTest {
         when(workflowProperty.getTargetEndpoint()).thenReturn(endpoint);
 
         EnvelopeResponse response = new EnvelopeResponse();
-        com.cresensolutions.document_search_springai_service.dto.ResponseData data = mock(com.cresensolutions.document_search_springai_service.dto.ResponseData.class);
+       ResponseData data = mock(ResponseData.class);
         response.setResponseData(data);
 
         service.forwardResponse(response);

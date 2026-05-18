@@ -64,6 +64,7 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
             chatEntry.put("profile", Common.DEFAULT_CHAT_PROFILE);
             chatEntry.put("chatTitle", Common.DEFAULT_CHAT_TITLE);
             chatEntry.put("username", history.getUserName());
+            chatEntry.put("response_type", "text");
             
             conversations.put(chatId, chatEntry);
             history.setTotalSessions(conversations.size());
@@ -95,15 +96,61 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
             Map<String, Object> metadata
     ) {
         Map<String, Object> messageEntry = new LinkedHashMap<>();
-        messageEntry.put("question", userQuestion);
-        messageEntry.put("answer", assistantAnswer);
-        messageEntry.put("standalone_query", standaloneQuery != null ? standaloneQuery : "");
-        messageEntry.put("question_id", questionId != null ? questionId : 0);
-        messageEntry.put("request_timestamp", OffsetDateTime.now().toString());
-        
+
+        // 1. table
+        Object tableData = null;
         if (metadata != null) {
-            messageEntry.putAll(metadata);
+            tableData = metadata.get(Common.RESULT_DATA_PAYLOAD);
         }
+        messageEntry.put("table", tableData);
+
+        // 2. answer
+        messageEntry.put("answer", assistantAnswer);
+
+        // 3. source
+        String source = "general";
+        if (metadata != null) {
+            if (metadata.containsKey("workflow")) {
+                source = metadata.get("workflow").toString();
+            } else if (metadata.containsKey("intent")) {
+                source = metadata.get("intent").toString();
+            }
+        }
+        messageEntry.put("source", source);
+
+        // 4. question
+        messageEntry.put("question", userQuestion);
+
+        // 5. latency_ms
+        long latencyMs = 0;
+        if (metadata != null && metadata.containsKey("latency_ms")) {
+            try {
+                latencyMs = ((Number) metadata.get("latency_ms")).longValue();
+            } catch (Exception e) {
+                // Ignore parsing errors
+            }
+        }
+        messageEntry.put("latency_ms", latencyMs);
+
+        // 6. request_id
+        String reqId = "";
+        if (metadata != null && metadata.containsKey("request_id")) {
+            reqId = metadata.get("request_id").toString();
+        }
+        messageEntry.put("request_id", reqId);
+
+        // 7. question_id
+        messageEntry.put("question_id", questionId != null ? questionId : 0);
+
+        // 8. request_timestamp
+        String reqTimestamp = OffsetDateTime.now().toString();
+        if (metadata != null && metadata.containsKey("request_timestamp")) {
+            reqTimestamp = metadata.get("request_timestamp").toString();
+        }
+        messageEntry.put("request_timestamp", reqTimestamp);
+
+        // 9. response_timestamp
+        messageEntry.put("response_timestamp", OffsetDateTime.now().toString());
 
         appendMessageToChat(chatId, userId, messageEntry);
     }
@@ -165,6 +212,13 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
         Map<String, Object> chatEntry = (Map<String, Object>) conversations.get(chatId);
         List<Map<String, Object>> messages = (List<Map<String, Object>>) chatEntry.get("messages");
         messages.add(message);
+
+        // Update response_type at conversation level based on message type/payload
+        if (message.containsKey("table") && message.get("table") != null) {
+            chatEntry.put("response_type", "table");
+        } else {
+            chatEntry.put("response_type", "text");
+        }
         
         // Update total QA pairs
         if (message.containsKey("question") && message.containsKey("answer")) {

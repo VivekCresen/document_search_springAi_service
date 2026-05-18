@@ -82,7 +82,7 @@ class SafeWorkflowManagerImplTest {
         when(baseWorkflow.processQuestion(anyString(), anyString(), anyString(), anyString(), anyInt(), any(java.util.UUID.class)))
                 .thenReturn(Map.of("test", "success"));
 
-        CompletableFuture<Map<String, Object>> future = service.processQuestionAsync("conv1", "q1", "user", 1, USER_ID);
+        CompletableFuture<Map<String, Object>> future = service.processQuestionAsync("conv1", "req1", "q1", "user", 1, USER_ID);
         Map<String, Object> result = future.get();
         
         assertThat(result).isNotNull();

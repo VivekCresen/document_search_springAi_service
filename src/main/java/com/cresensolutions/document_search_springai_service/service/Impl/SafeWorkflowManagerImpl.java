@@ -44,25 +44,27 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
     @Override
     public Map<String, Object> processQuestion(
             String conversationId,
+            String requestId,
             String question,
             String username,
             Integer questionId,
             java.util.UUID userId
     ) {
         SecuredEnhancedUnifiedWorkflow workflow = getOrCreateConversation(conversationId, userId);
-        return workflow.processQuestionWithHistory(question, username, questionId);
+        return workflow.processQuestionWithHistory(requestId, question, username, questionId);
     }
 
     @Override
     public CompletableFuture<Map<String, Object>> processQuestionAsync(
             String conversationId,
+            String requestId,
             String question,
             String username,
             Integer questionId,
             java.util.UUID userId
     ) {
         return CompletableFuture.supplyAsync(
-                        () -> processQuestion(conversationId, question, username, questionId, userId),
+                        () -> processQuestion(conversationId, requestId, question, username, questionId, userId),
                         taskExecutor
                 )
                 .orTimeout(workflowProperty.getRequestTimeoutSeconds(), TimeUnit.SECONDS);

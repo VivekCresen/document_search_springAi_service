@@ -11,11 +11,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -51,7 +47,7 @@ class ChatHistoryTest {
     void appendExchange_addsToNestedList() {
         String chatId = "chat_123";
         Map<String, Object> chatEntry = new HashMap<>();
-        chatEntry.put("messages", new java.util.ArrayList<Map<String, Object>>());
+        chatEntry.put("messages", new ArrayList<Map<String, Object>>());
         
         Map<String, Object> historyMap = new HashMap<>();
         historyMap.put(chatId, chatEntry);

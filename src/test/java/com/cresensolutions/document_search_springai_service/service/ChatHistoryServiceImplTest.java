@@ -3,6 +3,7 @@ package com.cresensolutions.document_search_springai_service.service;
 import com.cresensolutions.document_search_springai_service.domain.ChatHistory;
 import com.cresensolutions.document_search_springai_service.domain.User;
 import com.cresensolutions.document_search_springai_service.repository.ChatHistoryRepository;
+import com.cresensolutions.document_search_springai_service.repository.UserRepository;
 import com.cresensolutions.document_search_springai_service.service.Impl.ChatHistoryServiceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.*;
@@ -86,12 +90,12 @@ class ChatHistoryServiceImplTest {
         service.appendMessage("c1", USER_ID, "USER", "Hello", Map.of("k", "v"));
 
         verify(chatHistoryRepository).save(history);
-        
+
         @SuppressWarnings("unchecked")
         Map<String, Object> chat = (Map<String, Object>) history.getConversations().get("c1");
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> messages = (List<Map<String, Object>>) chat.get("messages");
-        
+
         assertThat(messages).hasSize(1);
         assertThat(messages.get(0).get("type")).isEqualTo("USER");
         assertThat(messages.get(0).get("content")).isEqualTo("Hello");
@@ -113,7 +117,7 @@ class ChatHistoryServiceImplTest {
                 "X is Y.", 7, Map.of("workflow", "document"));
 
         verify(chatHistoryRepository).save(history);
-        
+
         @SuppressWarnings("unchecked")
         Map<String, Object> chat = (Map<String, Object>) history.getConversations().get("c1");
         @SuppressWarnings("unchecked")
@@ -146,14 +150,14 @@ class ChatHistoryServiceImplTest {
     @DisplayName("getRecentContext: formats turns with [TURN -N | Role] prefix")
     void getRecentContext_withMessages_formatsCorrectly() {
         ChatHistory history = createHistoryWithChat("c1", USER_ID);
-        
+
         @SuppressWarnings("unchecked")
         Map<String, Object> chat = (Map<String, Object>) history.getConversations().get("c1");
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> messages = (List<Map<String, Object>>) chat.get("messages");
-        
+
         messages.add(Map.of("question", "Hello?", "answer", "Hi!"));
-        
+
         when(chatHistoryRepository.findByUserId(USER_ID)).thenReturn(Optional.of(history));
 
         String ctx = service.getRecentContext("c1", USER_ID, 10);
@@ -161,7 +165,7 @@ class ChatHistoryServiceImplTest {
         assertThat(ctx).contains("[TURN -1 | User]: Hello?");
         assertThat(ctx).contains("[TURN -1 | Assistant]: Hi!");
     }
-    
+
     // -------------------------------------------------------------------------
     // Private Method Tests via Reflection
     // -------------------------------------------------------------------------
@@ -172,14 +176,14 @@ class ChatHistoryServiceImplTest {
         ChatHistory history = createEmptyHistory(USER_ID);
         when(chatHistoryRepository.findByUserId(USER_ID)).thenReturn(Optional.of(history));
 
-        java.lang.reflect.Method method = ChatHistoryServiceImpl.class.getDeclaredMethod("appendMessageToChat", String.class, UUID.class, Map.class);
+       Method method = ChatHistoryServiceImpl.class.getDeclaredMethod("appendMessageToChat", String.class, UUID.class, Map.class);
         method.setAccessible(true);
-        
+
         Map<String, Object> msg = new LinkedHashMap<>();
         msg.put("content", "Reflection Test");
-        
+
         method.invoke(service, "c_new", USER_ID, msg);
-        
+
         verify(chatHistoryRepository, atLeastOnce()).save(history);
         assertThat(history.getConversations()).containsKey("c_new");
     }
@@ -187,19 +191,19 @@ class ChatHistoryServiceImplTest {
     @Test
     @DisplayName("Reflection: getOrCreateChatHistory throws if user null")
     void reflection_getOrCreateChatHistory_nullUser() throws Exception {
-        java.lang.reflect.Method method = ChatHistoryServiceImpl.class.getDeclaredMethod("getOrCreateChatHistory", UUID.class);
+       Method method = ChatHistoryServiceImpl.class.getDeclaredMethod("getOrCreateChatHistory", UUID.class);
         method.setAccessible(true);
-        
+
         assertThatThrownBy(() -> method.invoke(service, (UUID) null))
-                .isInstanceOf(java.lang.reflect.InvocationTargetException.class)
+                .isInstanceOf(InvocationTargetException.class)
                 .hasCauseInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("Reflection: getOrCreateChatHistory fetches user if history missing")
     void reflection_getOrCreateChatHistory_missingHistory() throws Exception {
-        com.cresensolutions.document_search_springai_service.repository.UserRepository userRepository = mock(com.cresensolutions.document_search_springai_service.repository.UserRepository.class);
-        java.lang.reflect.Field field = ChatHistoryServiceImpl.class.getDeclaredField("userRepository");
+        UserRepository userRepository = mock(UserRepository.class);
+        Field field = ChatHistoryServiceImpl.class.getDeclaredField("userRepository");
         field.setAccessible(true);
         field.set(service, userRepository);
 
@@ -207,7 +211,7 @@ class ChatHistoryServiceImplTest {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user(USER_ID)));
         when(chatHistoryRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        java.lang.reflect.Method method = ChatHistoryServiceImpl.class.getDeclaredMethod("getOrCreateChatHistory", UUID.class);
+       Method method = ChatHistoryServiceImpl.class.getDeclaredMethod("getOrCreateChatHistory", UUID.class);
         method.setAccessible(true);
         
         ChatHistory result = (ChatHistory) method.invoke(service, USER_ID);

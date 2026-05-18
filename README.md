@@ -137,6 +137,41 @@ User Request → API Gateway (8080) → Document Search Service (8084)
                             Azure Blob Storage
 ```
 
+## Indexing Service Integration
+
+Document ingestion is handled by the companion `document_search_azure_indexing` Spring Boot service. The two services work together through shared Azure and PostgreSQL contracts:
+
+- `document_search_azure_indexing` reads Azure Blob files, creates chunks, embeddings, enrichment metadata, and uploads documents to Azure AI Search.
+- `document_search_springAi_service` queries the same Azure AI Search index and applies user security filters using `folder_id`, `blob_uri`, and `prestage.files_in_index`.
+- PostgreSQL schema `prestage` is the shared control plane for folder permissions, file stability, ingestion jobs, indexed chunk IDs, and audit history.
+
+Shared tables added for the Java indexer migration:
+
+- `prestage.ingestion_jobs` replaces Python queue/polling state.
+- `prestage.indexed_chunks` replaces CSV chunk/document-id tracking.
+- `prestage.index_audit_logs` replaces ad hoc print/CSV audit trails.
+- `prestage.files_in_index` remains the query-time stability filter used by this service.
+
+Current migration status:
+
+- Phase 1 complete: Java indexing service foundation, config binding, JPA repositories, and shared tracking schema.
+- Phase 2 complete: blob inventory scanning, folder resolution, ingestion/deletion queue insertion, manual scan endpoints, and optional scheduled scanning.
+- Next phase: blob download and document parsing.
+
+Useful indexing endpoints:
+
+- `GET http://localhost:8086/api/indexing/blobs` - list indexable blobs.
+- `POST http://localhost:8086/api/indexing/blobs/scan` - scan blob storage and queue new/updated/deleted files.
+- `POST http://localhost:8086/api/indexing/blobs/requeue-stable` - queue already stable files for re-indexing.
+- `GET http://localhost:8086/api/indexing/blobs/jobs/count?status=to_be_ingested` - count queued jobs by status.
+
+To enable background blob polling, set:
+
+```properties
+INDEXING_BLOB_SCAN_ENABLED=true
+INDEXING_BLOB_SCAN_FIXED_DELAY_MS=60000
+```
+
 ## Dependencies
 
 ### Spring AI

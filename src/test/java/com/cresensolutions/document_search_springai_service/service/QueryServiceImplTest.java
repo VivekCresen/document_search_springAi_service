@@ -56,6 +56,7 @@ class QueryServiceImplTest {
         reqData.setEmail("test@test.com");
         reqData.setQuestionId(1);
         reqData.setUserId(USER_ID);
+        reqData.setRequestId("req-123");
         req.setRequestData(reqData);
 
         Map<String, Object> mockResult = Map.of(
@@ -64,7 +65,7 @@ class QueryServiceImplTest {
                 Common.RESULT_STANDALONE_QUERY, "Standalone q1"
         );
 
-        when(workflowManager.processQuestionAsync("conv1", "q1", "test@test.com", 1, USER_ID))
+        when(workflowManager.processQuestionAsync("conv1", "req-123", "q1", "test@test.com", 1, USER_ID))
                 .thenReturn(CompletableFuture.completedFuture(mockResult));
 
         CompletableFuture<EnvelopeResponse> future = service.processQuery(req);
@@ -93,7 +94,7 @@ class QueryServiceImplTest {
         reqData.setQuestion("q1");
         req.setRequestData(reqData);
 
-        when(workflowManager.processQuestionAsync(anyString(), eq("q1"), any(), any(), any()))
+        when(workflowManager.processQuestionAsync(anyString(), any(), eq("q1"), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture(Map.of()));
 
         CompletableFuture<EnvelopeResponse> future = service.processQuery(req);
@@ -102,7 +103,7 @@ class QueryServiceImplTest {
         assertThat(response.getResponseData().getConversationId()).isNotBlank();
         
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
-        verify(workflowManager).processQuestionAsync(captor.capture(), eq("q1"), any(), any(), any());
+        verify(workflowManager).processQuestionAsync(captor.capture(), any(), eq("q1"), any(), any(), any());
         assertThat(captor.getValue()).isNotBlank();
     }
 
@@ -120,7 +121,7 @@ class QueryServiceImplTest {
                 Common.RESULT_DATA_PAYLOAD, List.of(Map.of("col1", "val1"))
         );
 
-        when(workflowManager.processQuestionAsync(eq("conv1"), eq("q1"), any(), any(), any()))
+        when(workflowManager.processQuestionAsync(eq("conv1"), any(), eq("q1"), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture(mockResult));
 
         CompletableFuture<EnvelopeResponse> future = service.processQuery(req);

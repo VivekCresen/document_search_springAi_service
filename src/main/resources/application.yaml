@@ -3,11 +3,23 @@
 server:
   port: 8085
 
+# Indexing Service Integration
+# URL of the document_search_azure_indexing microservice that performs blob indexing.
+# After a successful document upload, this service is called to immediately queue
+# the uploaded blob for indexing — avoiding the need to wait for the scheduled scan.
+indexing:
+  service:
+    url: ${INDEXING_SERVICE_URL:http://localhost:8086}
+    enabled: ${INDEXING_CALLBACK_ENABLED:true}
+
 # Spring Framework Configuration
 spring:
   # Import .env file natively
   config:
-    import: optional:file:.env[.properties]
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:./document_search_springAi_service/.env[.properties]
+      - optional:file:../.env[.properties]
 
   # Application name for service discovery and logging
   application:
@@ -24,8 +36,8 @@ spring:
         speech: none # Text-to-speech (not used)
     azure:
       openai:
-        endpoint: ${AZURE_OPENAI_ENDPOINT:} # Azure OpenAI service endpoint
-        api-key: ${AZURE_OPENAI_KEY:} # API key for authentication
+        endpoint: ${AZURE_OPENAI_ENDPOINT:https://dummy.openai.azure.com/} # Azure OpenAI service endpoint
+        api-key: ${AZURE_OPENAI_KEY:dummy-key} # API key for authentication
         chat:
           options:
             deployment-name: ${AZURE_OPENAI_DEPLOYMENT:gpt-4o-mini} # Model deployment name
@@ -78,13 +90,13 @@ azure:
     blob-sas-expires-in-seconds: ${AZURE_BLOB_SAS_EXPIRES_SECONDS:3600}
     blob-sas-expires-in-days-for-pdf: ${AZURE_BLOB_SAS_EXPIRES_DAYS_PDF:7}
   openai:
-    endpoint: ${AZURE_OPENAI_ENDPOINT:}
-    api-key: ${AZURE_OPENAI_KEY:}
+    endpoint: ${AZURE_OPENAI_ENDPOINT:https://dummy.openai.azure.com/}
+    api-key: ${AZURE_OPENAI_KEY:dummy-key}
     deployment: ${AZURE_OPENAI_DEPLOYMENT:gpt-4o-mini}
     api-version: ${AZURE_API_VERSION:2024-02-01}
   search:
-    endpoint: ${AZURE_SEARCH_ENDPOINT:}
-    api-key: ${AZURE_SEARCH_ADMIN_KEY:${AZURE_SEARCH_KEY:}}
+    endpoint: ${AZURE_SEARCH_ENDPOINT:https://dummy.search.windows.net}
+    api-key: ${AZURE_SEARCH_ADMIN_KEY:${AZURE_SEARCH_KEY:dummy-key}}
     index-name: ${AZURE_SEARCH_INDEX_NAME:cresendemo_mmchatbot_v1}
     api-version: ${AZURE_SEARCH_API_VERSION:2023-11-01}
 
