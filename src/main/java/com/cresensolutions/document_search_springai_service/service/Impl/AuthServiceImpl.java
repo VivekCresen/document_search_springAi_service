@@ -4,6 +4,7 @@ import com.cresensolutions.document_search_springai_service.domain.User;
 import com.cresensolutions.document_search_springai_service.dto.auth.AuthResponse;
 import com.cresensolutions.document_search_springai_service.dto.auth.LoginRequest;
 import com.cresensolutions.document_search_springai_service.dto.auth.RegisterRequest;
+import com.cresensolutions.document_search_springai_service.exception.UserAlreadyExistsException;
 import com.cresensolutions.document_search_springai_service.repository.UserRepository;
 import com.cresensolutions.document_search_springai_service.security.CustomUserDetails;
 import com.cresensolutions.document_search_springai_service.utils.JwtUtils;
@@ -33,18 +34,18 @@ public class AuthServiceImpl implements AuthService {
      *
      * @param registerRequest the registration details
      * @return AuthResponse containing success message
-     * @throws RuntimeException if username or email already exists
+     * @throws UserAlreadyExistsException if username or email already exists
      */
     @Override
     public AuthResponse register(RegisterRequest registerRequest) {
         // Validate uniqueness of username
         if (userRepository.existsByUserName(registerRequest.getUserName())) {
-            throw new RuntimeException("Error: Username is already taken!");
+            throw new UserAlreadyExistsException("Username is already taken!");
         }
 
         // Validate uniqueness of email
         if (userRepository.existsByEmail(registerRequest.getEmail())) {
-            throw new RuntimeException("Error: Email is already in use!");
+            throw new UserAlreadyExistsException("Email is already in use!");
         }
 
         // Create new user's account with encoded password
