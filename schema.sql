@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS prestage.users (
     fullname       VARCHAR(100) NOT NULL,
     email          VARCHAR(100) NOT NULL UNIQUE,
     password       VARCHAR(120) NOT NULL,
+    is_admin       BOOLEAN NOT NULL DEFAULT FALSE,
 
     created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()

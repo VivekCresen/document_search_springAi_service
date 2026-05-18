@@ -50,4 +50,8 @@ public class User {
     @Size(max = 120)
     @Column(name = "password", nullable = false)
     private String password;
+
+    @Column(name = "is_admin", nullable = false)
+    @Builder.Default
+    private boolean isAdmin = false;
 }

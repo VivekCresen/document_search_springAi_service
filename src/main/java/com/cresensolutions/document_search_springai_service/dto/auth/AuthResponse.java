@@ -16,5 +16,6 @@ public class AuthResponse {
     private UUID id;
     private String userName;
     private String email;
+    private boolean isAdmin;
     private String message;
 }

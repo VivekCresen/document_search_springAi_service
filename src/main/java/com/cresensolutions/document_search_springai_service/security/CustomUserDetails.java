@@ -21,6 +21,7 @@ public class CustomUserDetails implements UserDetails {
     private String email;
     @JsonIgnore
     private String password;
+    private boolean isAdmin;
 
     public static CustomUserDetails build(User user) {
         return CustomUserDetails.builder()
@@ -28,6 +29,7 @@ public class CustomUserDetails implements UserDetails {
                 .userName(user.getUserName())
                 .email(user.getEmail())
                 .password(user.getPassword())
+                .isAdmin(user.isAdmin())
                 .build();
     }
 

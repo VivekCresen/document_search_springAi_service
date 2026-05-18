@@ -89,6 +89,7 @@ public class AuthServiceImpl implements AuthService {
                 .id(userDetails.getId())
                 .userName(userDetails.getUsername())
                 .email(userDetails.getEmail())
+                .isAdmin(userDetails.isAdmin())
                 .message("User logged in successfully!")
                 .build();
     }

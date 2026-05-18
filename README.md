@@ -156,7 +156,8 @@ Current migration status:
 
 - Phase 1 complete: Java indexing service foundation, config binding, JPA repositories, and shared tracking schema.
 - Phase 2 complete: blob inventory scanning, folder resolution, ingestion/deletion queue insertion, manual scan endpoints, and optional scheduled scanning.
-- Next phase: blob download and document parsing.
+- Remaining core migration complete: queued job processing now downloads blobs, parses documents with Apache Tika, chunks text, enriches metadata, generates Spring AI embeddings, uploads/deletes Azure AI Search documents, and updates `prestage.files_in_index` / `prestage.ingestion_jobs`.
+- Remaining hardening work: Azure Document Intelligence coordinate spans, higher-throughput embedding batching, and production observability dashboards.
 
 Useful indexing endpoints:
 
@@ -164,12 +165,17 @@ Useful indexing endpoints:
 - `POST http://localhost:8086/api/indexing/blobs/scan` - scan blob storage and queue new/updated/deleted files.
 - `POST http://localhost:8086/api/indexing/blobs/requeue-stable` - queue already stable files for re-indexing.
 - `GET http://localhost:8086/api/indexing/blobs/jobs/count?status=to_be_ingested` - count queued jobs by status.
+- `POST http://localhost:8086/api/indexing/jobs/index-schema` - create/update the Azure AI Search index schema.
+- `POST http://localhost:8086/api/indexing/jobs/process?maxJobs=4` - process queued ingestion/deletion jobs.
 
 To enable background blob polling, set:
 
 ```properties
 INDEXING_BLOB_SCAN_ENABLED=true
 INDEXING_BLOB_SCAN_FIXED_DELAY_MS=60000
+INDEXING_JOB_PROCESSING_ENABLED=true
+INDEXING_JOB_PROCESSING_FIXED_DELAY_MS=120000
+INDEXING_MAX_JOBS_PER_CYCLE=4
 ```
 
 ## Dependencies

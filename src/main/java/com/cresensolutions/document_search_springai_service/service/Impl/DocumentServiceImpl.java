@@ -34,6 +34,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.cresensolutions.document_search_springai_service.service.IndexingCallbackService;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -68,6 +69,8 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
     private final CloudProperty cloudProperty;
     private final ObjectMapper objectMapper;
     private final UserRepository userRepository;
+    /** Notifies the Azure Indexing Service to queue a blob immediately after upload. */
+    private final IndexingCallbackService indexingCallbackService;
 
     /** Eagerly-resolved container client, created once at startup. */
     private BlobContainerClient containerClient;
@@ -638,6 +641,12 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
             }
 
             log.info("Updated the file record in metadata table");
+
+            // Notify the Azure Indexing Service to immediately queue this blob for indexing.
+            // This call is non-blocking: any failure is swallowed inside the callback service.
+            String callbackFileName = filePath.getFileName();
+            indexingCallbackService.triggerIndexing(blobUrl, blobName, callbackFileName);
+
         } catch (Exception e) {
             log.error("Failed to upload file", e);
             throw e;

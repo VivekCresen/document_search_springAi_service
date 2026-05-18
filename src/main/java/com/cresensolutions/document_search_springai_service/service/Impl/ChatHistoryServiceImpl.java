@@ -107,7 +107,13 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
         // 2. answer
         messageEntry.put("answer", assistantAnswer);
 
-        // 3. source
+        // 3. question
+        messageEntry.put("question", userQuestion);
+
+        // 4. standalone_query
+        messageEntry.put("standalone_query", standaloneQuery);
+
+        // 5. workflow/source
         String source = "general";
         if (metadata != null) {
             if (metadata.containsKey("workflow")) {
@@ -116,12 +122,10 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
                 source = metadata.get("intent").toString();
             }
         }
+        messageEntry.put("workflow", source);
         messageEntry.put("source", source);
 
-        // 4. question
-        messageEntry.put("question", userQuestion);
-
-        // 5. latency_ms
+        // 7. latency_ms
         long latencyMs = 0;
         if (metadata != null && metadata.containsKey("latency_ms")) {
             try {
