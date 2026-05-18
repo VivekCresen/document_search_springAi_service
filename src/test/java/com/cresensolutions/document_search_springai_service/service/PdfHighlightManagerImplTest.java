@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.awt.Color;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -118,16 +119,52 @@ class PdfHighlightManagerImplTest {
         span.setPolygon(List.of(0.1, 0.1, 1.0, 0.1, 1.0, 0.5, 0.1, 0.5));
         span.setParagraphText("Hello World");
 
+        DiPageSpan invalidPage = new DiPageSpan();
+        invalidPage.setPage(-1); // Invalid page
+
+        DiPageSpan invalidPolygon = new DiPageSpan();
+        invalidPolygon.setPage(1);
+        invalidPolygon.setPolygon(List.of(0.1, 0.1)); // Too few points
+
+        DiPageSpan tokenOverlapSpan = new DiPageSpan();
+        tokenOverlapSpan.setPage(1);
+        tokenOverlapSpan.setPolygon(List.of(0.1, 0.1, 1.0, 0.1, 1.0, 0.5, 0.1, 0.5));
+        tokenOverlapSpan.setParagraphText("Hello World from DI system");
+
         HighlightedPdfResult result = service.highlightMultiplePassagesInPdf(
                 "folder/doc.pdf",
-                List.of("Hello World"),
+                List.of("Hello World from", "No match here"),
                 Color.CYAN,
                 "conv1", 2, USER_ID,
-                List.of(span)
+                List.of(span, invalidPage, invalidPolygon, tokenOverlapSpan)
         );
 
         assertThat(result.getDownloadLink()).isNotBlank();
         assertThat(result.getHighlightedPages()).contains(1);
+    }
+
+    @Test
+    @DisplayName("highlightMultiplePassagesInPdf: fallback to sentence and word windows")
+    void highlight_fallbackToSentenceAndWordWindows() throws Exception {
+        byte[] pdfBytes = createMinimalPdf();
+
+        com.azure.core.util.BinaryData binaryData = mock(com.azure.core.util.BinaryData.class);
+        when(blobClient.downloadContent()).thenReturn(binaryData);
+        when(binaryData.toBytes()).thenReturn(pdfBytes);
+        when(blobClient.getBlobUrl()).thenReturn("https://account.blob.core.windows.net/container/blob.pdf");
+        when(blobClient.generateSas(any(BlobServiceSasSignatureValues.class))).thenReturn("sig=xyz");
+
+        // The PDF contains "Hello World". 
+        // We will search for a long string where only "Hello World" matches a fragment.
+        HighlightedPdfResult result = service.highlightMultiplePassagesInPdf(
+                "folder/doc.pdf",
+                List.of("This is a really long string that is definitely not entirely in the PDF. But Hello World is in the PDF."),
+                Color.CYAN,
+                "conv1", 2, USER_ID,
+                Collections.emptyList()
+        );
+
+        assertThat(result.getDownloadLink()).isNotBlank();
     }
 
     @Test
@@ -147,6 +184,34 @@ class PdfHighlightManagerImplTest {
     }
 
     @Test
+    @DisplayName("highlightMultiplePassagesInPdf: succeeds on decoded blob name")
+    void highlight_urlEncodedBlobName_succeedsOnDecode() throws Exception {
+        // First call with encoded name fails
+        BlobClient encodedBlobClient = mock(BlobClient.class);
+        BlobClient decodedBlobClient = mock(BlobClient.class);
+        when(blobServiceClient.getBlobContainerClient(anyString())).thenReturn(blobContainerClient);
+        
+        when(blobContainerClient.getBlobClient("folder%2Ffile%20name.pdf")).thenReturn(encodedBlobClient);
+        when(encodedBlobClient.downloadContent()).thenThrow(new RuntimeException("Not found"));
+        
+        when(blobContainerClient.getBlobClient("folder/file name.pdf")).thenReturn(decodedBlobClient);
+        com.azure.core.util.BinaryData binaryData = mock(com.azure.core.util.BinaryData.class);
+        when(decodedBlobClient.downloadContent()).thenReturn(binaryData);
+        when(binaryData.toBytes()).thenReturn(createMinimalPdf());
+        lenient().when(decodedBlobClient.getBlobUrl()).thenReturn("https://example.com/file.pdf");
+        lenient().when(decodedBlobClient.generateSas(any())).thenReturn("token");
+
+        HighlightedPdfResult result = service.highlightMultiplePassagesInPdf(
+                "folder%2Ffile%20name.pdf",
+                List.of("Hello World"),
+                Color.YELLOW,
+                "conv", 1, USER_ID,
+                null
+        );
+        assertThat(result.getDownloadLink()).isNotEmpty();
+    }
+
+    @Test
     @DisplayName("highlightMultiplePassagesInPdf: null color defaults to yellow")
     void highlight_nullColor_usesYellow() throws Exception {
         byte[] pdfBytes = createMinimalPdf();
@@ -161,6 +226,66 @@ class PdfHighlightManagerImplTest {
                 "file.pdf", List.of("Hello"), null, "conv", 1, USER_ID, null);
 
         assertThat(result).isNotNull();
+    }
+
+    // -------------------------------------------------------------------------
+    // Private Method Reflection Tests
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Reflection: helper methods behavior")
+    void reflection_helperMethods() throws Exception {
+        // normalizeWhitespace
+        java.lang.reflect.Method normalize = PdfHighlightManagerImpl.class.getDeclaredMethod("normalizeWhitespace", String.class);
+        normalize.setAccessible(true);
+        assertThat(normalize.invoke(service, (String) null)).isEqualTo("");
+        assertThat(normalize.invoke(service, "  a   b\tc  ")).isEqualTo("a b c");
+
+        // hasText
+        java.lang.reflect.Method hasText = PdfHighlightManagerImpl.class.getDeclaredMethod("hasText", String.class);
+        hasText.setAccessible(true);
+        assertThat((Boolean) hasText.invoke(service, (String) null)).isFalse();
+        assertThat((Boolean) hasText.invoke(service, "   ")).isFalse();
+        assertThat((Boolean) hasText.invoke(service, " a ")).isTrue();
+
+        // filename
+        java.lang.reflect.Method filename = PdfHighlightManagerImpl.class.getDeclaredMethod("filename", String.class);
+        filename.setAccessible(true);
+        assertThat(filename.invoke(service, "folder/doc.pdf")).isEqualTo("doc.pdf");
+        assertThat(filename.invoke(service, "doc.pdf")).isEqualTo("doc.pdf");
+
+        // emptyResult
+        java.lang.reflect.Method emptyResult = PdfHighlightManagerImpl.class.getDeclaredMethod("emptyResult");
+        emptyResult.setAccessible(true);
+        HighlightedPdfResult res = (HighlightedPdfResult) emptyResult.invoke(service);
+        assertThat(res.getDownloadLink()).isEmpty();
+
+        // tokens
+        java.lang.reflect.Method tokens = PdfHighlightManagerImpl.class.getDeclaredMethod("tokens", String.class);
+        tokens.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Set<String> toks = (Set<String>) tokens.invoke(service, "Hello world, it's me!");
+        assertThat(toks).contains("hello", "world");
+
+        // tokenOverlapRatio
+        java.lang.reflect.Method overlap = PdfHighlightManagerImpl.class.getDeclaredMethod("tokenOverlapRatio", String.class, String.class);
+        overlap.setAccessible(true);
+        assertThat((Double) overlap.invoke(service, "a b", "c d")).isEqualTo(0.0);
+        assertThat((Double) overlap.invoke(service, "hello world again", "hello universe")).isGreaterThan(0.0);
+
+        // sentenceSegments
+        java.lang.reflect.Method sentences = PdfHighlightManagerImpl.class.getDeclaredMethod("sentenceSegments", String.class);
+        sentences.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<String> segs = (List<String>) sentences.invoke(service, "Hello world. How are you? I am fine!");
+        assertThat(segs).hasSize(3).contains("Hello world.", "How are you?", "I am fine!");
+
+        // wordWindows
+        java.lang.reflect.Method windows = PdfHighlightManagerImpl.class.getDeclaredMethod("wordWindows", String.class);
+        windows.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<String> wins = (List<String>) windows.invoke(service, "1 2 3 4 5 6 7 8 9 10 11 12");
+        assertThat(wins).isNotEmpty();
     }
 
     // -------------------------------------------------------------------------

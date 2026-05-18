@@ -163,6 +163,60 @@ class ChatHistoryServiceImplTest {
     }
     
     // -------------------------------------------------------------------------
+    // Private Method Tests via Reflection
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Reflection: appendMessageToChat creates new chat if not exists")
+    void reflection_appendMessageToChat_createsNewChat() throws Exception {
+        ChatHistory history = createEmptyHistory(USER_ID);
+        when(chatHistoryRepository.findByUserId(USER_ID)).thenReturn(Optional.of(history));
+
+        java.lang.reflect.Method method = ChatHistoryServiceImpl.class.getDeclaredMethod("appendMessageToChat", String.class, UUID.class, Map.class);
+        method.setAccessible(true);
+        
+        Map<String, Object> msg = new LinkedHashMap<>();
+        msg.put("content", "Reflection Test");
+        
+        method.invoke(service, "c_new", USER_ID, msg);
+        
+        verify(chatHistoryRepository, atLeastOnce()).save(history);
+        assertThat(history.getConversations()).containsKey("c_new");
+    }
+
+    @Test
+    @DisplayName("Reflection: getOrCreateChatHistory throws if user null")
+    void reflection_getOrCreateChatHistory_nullUser() throws Exception {
+        java.lang.reflect.Method method = ChatHistoryServiceImpl.class.getDeclaredMethod("getOrCreateChatHistory", UUID.class);
+        method.setAccessible(true);
+        
+        assertThatThrownBy(() -> method.invoke(service, (UUID) null))
+                .isInstanceOf(java.lang.reflect.InvocationTargetException.class)
+                .hasCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("Reflection: getOrCreateChatHistory fetches user if history missing")
+    void reflection_getOrCreateChatHistory_missingHistory() throws Exception {
+        com.cresensolutions.document_search_springai_service.repository.UserRepository userRepository = mock(com.cresensolutions.document_search_springai_service.repository.UserRepository.class);
+        java.lang.reflect.Field field = ChatHistoryServiceImpl.class.getDeclaredField("userRepository");
+        field.setAccessible(true);
+        field.set(service, userRepository);
+
+        when(chatHistoryRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user(USER_ID)));
+        when(chatHistoryRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        java.lang.reflect.Method method = ChatHistoryServiceImpl.class.getDeclaredMethod("getOrCreateChatHistory", UUID.class);
+        method.setAccessible(true);
+        
+        ChatHistory result = (ChatHistory) method.invoke(service, USER_ID);
+        
+        assertThat(result).isNotNull();
+        assertThat(result.getUserName()).isEqualTo("vivek");
+    }
+
+    // -------------------------------------------------------------------------
     // Helper Methods
     // -------------------------------------------------------------------------
     

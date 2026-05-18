@@ -2,6 +2,9 @@ package com.cresensolutions.document_search_springai_service.service;
 
 import com.cresensolutions.document_search_springai_service.domain.DocumentRepositoryUserMapping;
 import com.cresensolutions.document_search_springai_service.domain.FileInIndex;
+import com.cresensolutions.document_search_springai_service.domain.User;
+import com.cresensolutions.document_search_springai_service.dto.PermissionCheckRequest;
+import com.cresensolutions.document_search_springai_service.dto.PermissionCheckResponse;
 import com.cresensolutions.document_search_springai_service.repository.DocumentRepositoryUserMappingRepository;
 import com.cresensolutions.document_search_springai_service.repository.FileInIndexRepository;
 import com.cresensolutions.document_search_springai_service.repository.PrestageDocumentRepository;
@@ -14,9 +17,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -46,6 +53,19 @@ class UserAccessServiceImplTest {
     }
 
     @Test
+    @DisplayName("getRestrictedFolders: finds by user id when user exists")
+    void getRestrictedFolders_userExists() {
+        UUID userId = UUID.randomUUID();
+        User user = new User();
+        user.setId(userId);
+        when(userRepository.findByUserName("vivek")).thenReturn(Optional.of(user));
+        when(userMappingRepository.findRestrictedFolderIds("vivek", userId)).thenReturn(List.of(1L, 2L));
+
+        List<String> result = service.getRestrictedFolders("vivek");
+        assertThat(result).containsExactly("1", "2");
+    }
+
+    @Test
     @DisplayName("getRestrictedFolders: maps Integer folder IDs to String list")
     void getRestrictedFolders_returnsMappedIds() {
         when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of(1L, 5L, 9L));
@@ -63,6 +83,73 @@ class UserAccessServiceImplTest {
         List<String> result = service.getRestrictedFolders("vivek");
 
         assertThat(result).containsExactly("1", "3");
+    }
+
+    // -------------------------------------------------------------------------
+    // resolveCurrentUser
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("resolveCurrentUser: returns username if present")
+    void resolveCurrentUser_usernamePresent() {
+        assertThat(service.resolveCurrentUser("vivek", "email")).isEqualTo("vivek");
+    }
+
+    @Test
+    @DisplayName("resolveCurrentUser: returns email if username is blank")
+    void resolveCurrentUser_emailPresent() {
+        assertThat(service.resolveCurrentUser("", "email@example.com")).isEqualTo("email@example.com");
+    }
+
+    @Test
+    @DisplayName("resolveCurrentUser: throws exception if both blank")
+    void resolveCurrentUser_bothBlank_throws() {
+        assertThatThrownBy(() -> service.resolveCurrentUser("", null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Authentication");
+    }
+
+    // -------------------------------------------------------------------------
+    // checkPermissions
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("checkPermissions: computes access per folder")
+    void checkPermissions_success() {
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of(5L));
+        PermissionCheckRequest req = new PermissionCheckRequest();
+        req.setFolderIds(List.of("1", "5"));
+
+        PermissionCheckResponse resp = service.checkPermissions("vivek", req);
+
+        assertThat(resp.getUsername()).isEqualTo("vivek");
+        assertThat(resp.getAccessibleCount()).isEqualTo(1);
+        assertThat(resp.getRestrictedCount()).isEqualTo(1);
+        assertThat(resp.getPermissions().get("1")).isTrue();
+        assertThat(resp.getPermissions().get("5")).isFalse();
+    }
+
+    @Test
+    @DisplayName("checkPermissions: null request returns empty permissions")
+    void checkPermissions_nullRequest() {
+        PermissionCheckResponse resp = service.checkPermissions("vivek", null);
+        assertThat(resp.getPermissions()).isEmpty();
+    }
+
+    // -------------------------------------------------------------------------
+    // getMyAccess
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("getMyAccess: returns map of access data")
+    void getMyAccess_success() {
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of(5L, 2L));
+
+        Map<String, Object> map = service.getMyAccess("vivek");
+
+        assertThat(map.get("username")).isEqualTo("vivek");
+        assertThat(map.get("total_restricted_folders")).isEqualTo(2);
+        assertThat(map.get("restricted_folder_ids")).isEqualTo(List.of("2", "5"));
     }
 
     // -------------------------------------------------------------------------
@@ -199,14 +286,30 @@ class UserAccessServiceImplTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("addFolderRestrictions: deletes old mappings and saves new ones")
-    void addFolderRestrictions_replacesExisting() {
+    @DisplayName("addFolderRestrictions: deletes old mappings and saves new ones for non-existing user")
+    void addFolderRestrictions_replacesExisting_NoUser() {
+        when(userRepository.findByUserName("vivek")).thenReturn(Optional.empty());
         when(userMappingRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         service.addFolderRestrictions("vivek", new String[]{"1", "2", "3"});
 
         verify(userMappingRepository).deleteByUserName("vivek");
         verify(userMappingRepository, times(3)).save(any(DocumentRepositoryUserMapping.class));
+    }
+
+    @Test
+    @DisplayName("addFolderRestrictions: deletes old mappings and saves new ones for existing user")
+    void addFolderRestrictions_replacesExisting_UserExists() {
+        UUID userId = UUID.randomUUID();
+        User user = new User();
+        user.setId(userId);
+        when(userRepository.findByUserName("vivek")).thenReturn(Optional.of(user));
+        when(userMappingRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        service.addFolderRestrictions("vivek", new String[]{"1"});
+
+        verify(userMappingRepository).deleteByUserId(userId);
+        verify(userMappingRepository, times(1)).save(any(DocumentRepositoryUserMapping.class));
     }
 
     @Test
@@ -220,10 +323,42 @@ class UserAccessServiceImplTest {
     }
 
     @Test
-    @DisplayName("removeAllRestrictions: deletes all mappings for user")
-    void removeAllRestrictions_deletesAll() {
+    @DisplayName("removeAllRestrictions: deletes all mappings for user when user is null")
+    void removeAllRestrictions_deletesAll_NoUser() {
+        when(userRepository.findByUserName("vivek")).thenReturn(Optional.empty());
         service.removeAllRestrictions("vivek");
         verify(userMappingRepository).deleteByUserName("vivek");
+    }
+
+    @Test
+    @DisplayName("removeAllRestrictions: deletes all mappings for user when user exists")
+    void removeAllRestrictions_deletesAll_UserExists() {
+        UUID userId = UUID.randomUUID();
+        User user = new User();
+        user.setId(userId);
+        when(userRepository.findByUserName("vivek")).thenReturn(Optional.of(user));
+        service.removeAllRestrictions("vivek");
+        verify(userMappingRepository).deleteByUserId(userId);
+    }
+
+    // -------------------------------------------------------------------------
+    // cache clears
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("clearPermissionCache: clears cache and returns success map")
+    void clearPermissionCache_success() {
+        Map<String, Object> map = service.clearPermissionCache("vivek");
+        assertThat(map.get("success")).isEqualTo(true);
+        assertThat(map.get("username")).isEqualTo("vivek");
+    }
+
+    @Test
+    @DisplayName("clearAllUserRestrictionsCache: completes without error")
+    void clearAllUserRestrictionsCache_success() {
+        service.clearAllUserRestrictionsCache();
+        // Just verify no exception
+        assertThat(true).isTrue();
     }
 
     // -------------------------------------------------------------------------
@@ -238,6 +373,21 @@ class UserAccessServiceImplTest {
         List<String> result = service.filterAccessibleFolders("vivek", List.of("1", "5", "9", "10"));
 
         assertThat(result).containsExactly("1", "10");
+    }
+
+    // -------------------------------------------------------------------------
+    // countAccessibleFolders
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("countAccessibleFolders: total minus restricted")
+    void countAccessibleFolders_success() {
+        when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of(1L, 2L));
+        when(prestageDocumentRepository.countFolders()).thenReturn(10L);
+
+        long count = service.countAccessibleFolders("vivek");
+
+        assertThat(count).isEqualTo(8L);
     }
 
     // -------------------------------------------------------------------------

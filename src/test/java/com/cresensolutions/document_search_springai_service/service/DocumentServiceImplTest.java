@@ -67,6 +67,16 @@ class DocumentServiceImplTest {
         service.init();
     }
 
+    @Test
+    void init_handlesExceptionGracefully() {
+        when(cloudProperty.getContainerName()).thenReturn("test-container");
+        when(blobServiceClient.getBlobContainerClient(anyString())).thenReturn(blobContainerClient);
+        when(blobContainerClient.exists()).thenThrow(new RuntimeException("Azure connection failed"));
+        
+        // This should not throw
+        service.init();
+    }
+
 
     // -------------------------------------------------------------------------
     // uploadFile
@@ -134,6 +144,38 @@ class DocumentServiceImplTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test
+    @DisplayName("uploadFile: handles exception during upload")
+    void uploadFile_exception() throws IOException {
+        FilePath fileInfo = FilePath.of(Arrays.asList("a", "b"));
+        MockMultipartFile input = mock(MockMultipartFile.class);
+        when(input.isEmpty()).thenReturn(false);
+        when(input.getSize()).thenReturn(100L);
+        when(input.getInputStream()).thenThrow(new RuntimeException("Stream failed"));
+
+        assertThatThrownBy(() -> service.uploadFile(fileInfo, input, "UPLOADED", "vivek"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Stream failed");
+    }
+
+    @Test
+    @DisplayName("uploadDocument: uploads with default status UPLOADED")
+    void uploadDocument_success() throws IOException {
+        FilePath fileInfo = FilePath.of(Arrays.asList("folder", "file.pdf"));
+        MockMultipartFile input = new MockMultipartFile("file", "file.pdf", "application/pdf", "bytes".getBytes());
+
+        when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
+        when(blobClient.exists()).thenReturn(false);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"filePath\":[\"folder\",\"file.pdf\"]}");
+        when(fileMetadataRepository.findByFilePathJson(any())).thenReturn(Optional.empty());
+        when(fileMetadataRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        Boolean result = service.uploadDocument(fileInfo, input, "vivek");
+
+        assertThat(result).isTrue();
+        verify(fileMetadataRepository).save(argThat(m -> m.getStatus() == FileMetadata.FileStatus.UPLOADED));
+    }
+
     // -------------------------------------------------------------------------
     // downloadFile
     // -------------------------------------------------------------------------
@@ -169,6 +211,25 @@ class DocumentServiceImplTest {
         verify(blobContainerClient, never()).getBlobClient(any());
     }
 
+    @Test
+    @DisplayName("getDownloadedFile: wraps ByteArrayOutputStream")
+    void getDownloadedFile_success() throws IOException {
+        FilePath fileInfo = FilePath.of(Arrays.asList("folder", "file.pdf"));
+        FileMetadata meta = FileMetadata.builder().blobName("folder/file.pdf").build();
+
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"filePath\":[\"folder\",\"file.pdf\"]}");
+        when(fileMetadataRepository.findByFilePathJson(any())).thenReturn(Optional.of(meta));
+        when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
+        doAnswer(inv -> { ((ByteArrayOutputStream) inv.getArgument(0)).write("data".getBytes()); return null; })
+                .when(blobClient).downloadStream(any(ByteArrayOutputStream.class));
+
+        var result = service.getDownloadedFile(fileInfo);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getFilename()).isEqualTo("file.pdf");
+        assertThat(result.getContent()).isNotEmpty();
+    }
+
     // -------------------------------------------------------------------------
     // downloadFileDirectly
     // -------------------------------------------------------------------------
@@ -183,6 +244,20 @@ class DocumentServiceImplTest {
 
         verify(blobClient).downloadStream(any(ByteArrayOutputStream.class));
         assertThat(result).isNotNull();
+    }
+
+    @Test
+    @DisplayName("getDownloadedFileByPath: wraps ByteArrayOutputStream")
+    void getDownloadedFileByPath_success() {
+        when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
+        doAnswer(inv -> { ((ByteArrayOutputStream) inv.getArgument(0)).write("data".getBytes()); return null; })
+                .when(blobClient).downloadStream(any(ByteArrayOutputStream.class));
+
+        var result = service.getDownloadedFileByPath("folder/file.pdf");
+
+        assertThat(result).isNotNull();
+        assertThat(result.getFilename()).isEqualTo("file.pdf");
+        assertThat(result.getContent()).isNotEmpty();
     }
 
     // -------------------------------------------------------------------------
@@ -338,6 +413,23 @@ class DocumentServiceImplTest {
         assertThat(result).isNotNull();
     }
 
+    @Test
+    @DisplayName("getDownloadedFileByDocumentId: wraps ByteArrayOutputStream")
+    void getDownloadedFileByDocumentId_success() {
+        FilePath fp = FilePath.of(List.of("folder", "file.pdf"));
+        FileMetadata meta = FileMetadata.builder().blobName("folder/doc/file.pdf").filepath(fp).build();
+        when(fileMetadataRepository.findByDocumentId("docId")).thenReturn(Optional.of(meta));
+        when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
+        doAnswer(inv -> { ((ByteArrayOutputStream) inv.getArgument(0)).write("data".getBytes()); return null; })
+                .when(blobClient).downloadStream(any(ByteArrayOutputStream.class));
+
+        var result = service.getDownloadedFileByDocumentId("docId");
+
+        assertThat(result).isNotNull();
+        assertThat(result.getFilename()).isEqualTo("file.pdf");
+        assertThat(result.getContent()).isNotEmpty();
+    }
+
     // -------------------------------------------------------------------------
     // downloadDocument (Resource)
     // -------------------------------------------------------------------------
@@ -430,6 +522,21 @@ class DocumentServiceImplTest {
     }
 
     @Test
+    @DisplayName("azureFileUploader: catches exceptions gracefully")
+    void fileUploader_catchesExceptions() throws IOException {
+        FilePath fp = FilePath.of(List.of("folder", "file.pdf"));
+        when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
+        when(blobClient.exists()).thenReturn(false);
+        
+        doThrow(new RuntimeException("Test Exception")).when(blobClient).upload(any(InputStream.class), eq(true));
+
+        try (java.io.InputStream is = new java.io.ByteArrayInputStream("content".getBytes())) {
+            boolean result = service.fileUploader(is, fp, "test-container");
+            assertThat(result).isFalse();
+        }
+    }
+
+    @Test
     @DisplayName("fileDownloader: delegates to downloadByBlobName using FilePath")
     void fileDownloader_success() {
         FilePath fp = FilePath.of(List.of("folder", "file.pdf"));
@@ -439,6 +546,17 @@ class DocumentServiceImplTest {
 
         verify(blobClient).downloadStream(any(ByteArrayOutputStream.class));
         assertThat(result).isNotNull();
+    }
+
+    @Test
+    @DisplayName("downloadByBlobName: catches exception gracefully")
+    void downloadByBlobName_catchesException() {
+        FilePath fp = FilePath.of(List.of("folder", "file.pdf"));
+        when(blobContainerClient.getBlobClient(anyString())).thenReturn(blobClient);
+        doThrow(new RuntimeException("Download failed")).when(blobClient).downloadStream(any(ByteArrayOutputStream.class));
+
+        ByteArrayOutputStream result = service.fileDownloader(fp, "test-container");
+        assertThat(result).isNull();
     }
 
     // -------------------------------------------------------------------------

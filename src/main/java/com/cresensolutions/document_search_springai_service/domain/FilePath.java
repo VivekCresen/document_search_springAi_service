@@ -2,6 +2,8 @@ package com.cresensolutions.document_search_springai_service.domain;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -12,6 +14,7 @@ import java.util.Objects;
 
 @Data
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class FilePath implements Serializable {
 
     private List<String> filePath = new ArrayList<>();
@@ -22,10 +25,12 @@ public class FilePath implements Serializable {
         return fp;
     }
 
+    @JsonIgnore
     public boolean isValid() {
         return filePath != null && filePath.stream().anyMatch(segment -> segment != null && !segment.isBlank());
     }
 
+    @JsonIgnore
     public FilePath normalized() {
         if (filePath == null) {
             return FilePath.of(Collections.emptyList());
@@ -38,16 +43,19 @@ public class FilePath implements Serializable {
     }
 
  
+    @JsonIgnore
     public String getFileName() {
         if (filePath == null || filePath.isEmpty()) return "";
         return filePath.get(filePath.size() - 1);
     }
 
+    @JsonIgnore
     public List<String> getFolderSegments() {
         if (filePath == null || filePath.size() <= 1) return List.of();
         return filePath.subList(0, filePath.size() - 1);
     }
     
+    @JsonIgnore
     public String toFullPath() {
         if (filePath == null || filePath.isEmpty()) return "";
         return String.join("/", filePath);

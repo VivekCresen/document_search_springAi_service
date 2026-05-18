@@ -5,6 +5,10 @@ server:
 
 # Spring Framework Configuration
 spring:
+  # Import .env file natively
+  config:
+    import: optional:file:.env[.properties]
+
   # Application name for service discovery and logging
   application:
     name: DOCUMENT-SERVICE
@@ -68,7 +72,7 @@ spring:
 azure:
   storage:
     account-name: ${AZURE_STORAGE_ACCOUNT_NAME:cresengpt}
-    account-key: ${AZURE_STORAGE_ACCOUNT_KEY}
+    account-key: ${AZURE_STORAGE_ACCOUNT_KEY:}
     account-url: ${AZURE_STORAGE_ACCOUNT_URL:https://cresengpt.blob.core.windows.net/}
     container-name: ${AZURE_STORAGE_CONTAINER_NAME:internchatgptdoccontainer}
     blob-sas-expires-in-seconds: ${AZURE_BLOB_SAS_EXPIRES_SECONDS:3600}

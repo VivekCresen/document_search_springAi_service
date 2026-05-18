@@ -42,7 +42,7 @@ public class DocumentController {
      * @param username the username of the uploader
      * @return ResponseEntity with success status
      */
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/upload")
     @Operation(summary = "Upload a file", description = "Upload a file to Azure Blob Storage using a hierarchical JSON path")
     public ResponseEntity<?> uploadDocument(
             @RequestPart("fileInfo") FilePath fileInfo,

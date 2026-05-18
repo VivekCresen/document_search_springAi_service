@@ -20,6 +20,8 @@ import com.cresensolutions.document_search_springai_service.domain.PrestageDocum
 import com.cresensolutions.document_search_springai_service.repository.FileInIndexRepository;
 import com.cresensolutions.document_search_springai_service.repository.FileMetadataRepository;
 import com.cresensolutions.document_search_springai_service.repository.PrestageDocumentRepository;
+import com.cresensolutions.document_search_springai_service.repository.UserRepository;
+import com.cresensolutions.document_search_springai_service.domain.User;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
@@ -65,6 +67,7 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
     private final PrestageDocumentRepository prestageDocumentRepository;
     private final CloudProperty cloudProperty;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
     /** Eagerly-resolved container client, created once at startup. */
     private BlobContainerClient containerClient;
@@ -588,10 +591,13 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
             String blobUrl = cloudProperty.getAccountUrl() + cloudProperty.getContainerName() + "/" + blobName;
 
             FileMetadata existingFile = findByFilePath(filePath);
+            User userObj = userRepository.findByUserNameOrEmail(username, username).orElse(null);
+
             if (existingFile == null) {
                 fileMetadataRepository.save(FileMetadata.builder()
                         .filepath(filePath)
                         .createdBy(username)
+                        .user(userObj)
                         .azureBlobUrl(blobUrl)
                         .blobName(blobName)
                         .fileSizeInMb(BigDecimal.valueOf(fileSizeInMb).setScale(2, RoundingMode.HALF_UP))
@@ -606,6 +612,7 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
                 existingFile.setContentType(input.getContentType());
                 existingFile.setStatus(fileStatus);
                 existingFile.setCreatedBy(username);
+                existingFile.setUser(userObj);
                 fileMetadataRepository.save(existingFile);
             }
 

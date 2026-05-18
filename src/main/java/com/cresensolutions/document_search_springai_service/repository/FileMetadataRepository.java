@@ -13,15 +13,15 @@ import java.util.Optional;
 @Repository
 public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long> {
 
-    @Query(value = "SELECT * FROM file_metadata WHERE filepath->'filePath'->>1 = :documentId",
+    @Query(value = "SELECT * FROM prestage.file_metadata WHERE filepath->'filePath'->>1 = :documentId",
             nativeQuery = true)
     Optional<FileMetadata> findByDocumentId(@Param("documentId") String documentId);
 
-    @Query(value = "SELECT * FROM file_metadata WHERE filepath = CAST(:filePathJson AS jsonb)",
+    @Query(value = "SELECT * FROM prestage.file_metadata WHERE filepath = CAST(:filePathJson AS jsonb)",
             nativeQuery = true)
     Optional<FileMetadata> findByFilePathJson(@Param("filePathJson") String filePathJson);
 
-    @Query(value = "SELECT * FROM file_metadata WHERE filepath->'filePath'->>0 = :folderId",
+    @Query(value = "SELECT * FROM prestage.file_metadata WHERE filepath->'filePath'->>0 = :folderId",
             nativeQuery = true)
     List<FileMetadata> findByFolderId(@Param("folderId") String folderId);
 
@@ -34,7 +34,7 @@ public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long
     @Query("SELECT f FROM FileMetadata f WHERE f.blobName = :blobName")
     Optional<FileMetadata> findByBlobName(@Param("blobName") String blobName);
 
-    @Query(value = "SELECT * FROM file_metadata WHERE filepath->'filePath'->>0 = :folderId AND status = :status",
+    @Query(value = "SELECT * FROM prestage.file_metadata WHERE filepath->'filePath'->>0 = :folderId AND status = :status",
             nativeQuery = true)
     List<FileMetadata> findByFolderIdAndStatus(@Param("folderId") String folderId,
                                                @Param("status") String status);
