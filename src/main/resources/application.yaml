@@ -11,6 +11,7 @@ indexing:
   service:
     url: ${INDEXING_SERVICE_URL:http://localhost:8086}
     enabled: ${INDEXING_CALLBACK_ENABLED:true}
+    internal-token: ${INDEXING_INTERNAL_TOKEN:dev-indexing-internal-token}
 
 # Spring Framework Configuration
 spring:
@@ -28,7 +29,7 @@ spring:
   # Spring AI Configuration for Azure OpenAI integration
   ai:
     model:
-      chat: ${SPRING_AI_MODEL_CHAT:none} # Chat model configuration
+      chat: ${SPRING_AI_MODEL_CHAT:azure-openai} # Chat model configuration
       embedding: none # Embedding model (not used)
       image: none # Image processing (not used)
       audio:

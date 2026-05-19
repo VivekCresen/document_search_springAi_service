@@ -2,6 +2,8 @@ package com.cresensolutions.document_search_springai_service.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -28,15 +30,18 @@ public class IndexingCallbackService {
     private final RestTemplate restTemplate;
     private final String indexingServiceUrl;
     private final boolean callbackEnabled;
+    private final String internalToken;
 
     public IndexingCallbackService(
             RestTemplate restTemplate,
             @Value("${indexing.service.url:http://localhost:8086}") String indexingServiceUrl,
-            @Value("${indexing.service.enabled:true}") boolean callbackEnabled
+            @Value("${indexing.service.enabled:true}") boolean callbackEnabled,
+            @Value("${indexing.service.internal-token:dev-indexing-internal-token}") String internalToken
     ) {
         this.restTemplate = restTemplate;
         this.indexingServiceUrl = indexingServiceUrl;
         this.callbackEnabled = callbackEnabled;
+        this.internalToken = internalToken;
     }
 
     /**
@@ -67,10 +72,13 @@ public class IndexingCallbackService {
                 "blobName", blobName == null ? "" : blobName,
                 "fileName", fileName == null ? "" : fileName
         );
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Internal-Service-Token", internalToken);
+        HttpEntity<Map<String, String>> request = new HttpEntity<>(payload, headers);
 
         try {
             log.info("[IndexingCallback] Triggering indexing for blob: {}", blobUri);
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, payload, Map.class);
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
             if (response.getStatusCode().is2xxSuccessful()) {
                 Object queued = response.getBody() != null ? response.getBody().get("queued") : null;
                 log.info("[IndexingCallback] Indexing triggered successfully. queued={} blobUri={}", queued, blobUri);

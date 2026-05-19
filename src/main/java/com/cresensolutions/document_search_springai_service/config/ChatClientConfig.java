@@ -2,12 +2,10 @@ package com.cresensolutions.document_search_springai_service.config;
 
 import com.cresensolutions.document_search_springai_service.commons.Common;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConditionalOnBean(ChatClient.Builder.class)
 public class ChatClientConfig {
 
     public static final String STANDALONE_QUERY_CHAT_CLIENT = Common.STANDALONE_QUERY_CHAT_CLIENT;
