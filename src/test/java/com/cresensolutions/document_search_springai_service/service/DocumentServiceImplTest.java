@@ -58,6 +58,7 @@ class DocumentServiceImplTest {
     @Mock CloudProperty cloudProperty;
     @Mock ObjectMapper objectMapper;
     @Mock UserRepository userRepository;
+    @Mock IndexingCallbackService indexingCallbackService;
 
     @InjectMocks DocumentServiceImpl service;
 
@@ -109,6 +110,7 @@ class DocumentServiceImplTest {
         verify(fileMetadataRepository).save(argThat(m ->
                 m.getCreatedBy().equals("vivek") &&
                 m.getStatus() == FileMetadata.FileStatus.UPLOADED));
+        verify(indexingCallbackService).triggerIndexing(anyString(), anyString(), eq("ABC.png"));
     }
 
     /**
@@ -139,6 +141,7 @@ class DocumentServiceImplTest {
         verify(blobClient).delete();   // old blob deleted before re-upload
         assertThat(existing.getCreatedBy()).isEqualTo("vivek");
         assertThat(existing.getStatus()).isEqualTo(FileMetadata.FileStatus.INDEXED);
+        verify(indexingCallbackService).triggerIndexing(anyString(), anyString(), eq("ABC.png"));
     }
 
     @Test
@@ -179,6 +182,7 @@ class DocumentServiceImplTest {
 
         assertThat(result).isTrue();
         verify(fileMetadataRepository).save(argThat(m -> m.getStatus() == FileMetadata.FileStatus.UPLOADED));
+        verify(indexingCallbackService).triggerIndexing(anyString(), anyString(), eq("file.pdf"));
     }
 
     // -------------------------------------------------------------------------
@@ -608,6 +612,8 @@ class DocumentServiceImplTest {
 
         assertThat(results).hasSize(2).containsOnly(true);
         verify(fileMetadataRepository, times(2)).save(any());
+        verify(indexingCallbackService).triggerIndexing(anyString(), anyString(), eq("file1.pdf"));
+        verify(indexingCallbackService).triggerIndexing(anyString(), anyString(), eq("file2.pdf"));
     }
 
     @Test
