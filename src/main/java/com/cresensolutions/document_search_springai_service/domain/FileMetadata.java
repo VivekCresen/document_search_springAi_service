@@ -14,7 +14,7 @@ import java.time.OffsetDateTime;
  * file properties, and processing status.
  */
 @Entity
-@Table(name = "file_metadata", schema = "prestage")
+@Table(name = "file_metadata", schema = "demo")
 @Data
 @Builder
 @NoArgsConstructor

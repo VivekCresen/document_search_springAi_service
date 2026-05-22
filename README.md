@@ -142,21 +142,21 @@ User Request → API Gateway (8080) → Document Search Service (8084)
 Document ingestion is handled by the companion `document_search_azure_indexing` Spring Boot service. The two services work together through shared Azure and PostgreSQL contracts:
 
 - `document_search_azure_indexing` reads Azure Blob files, creates chunks, embeddings, enrichment metadata, and uploads documents to Azure AI Search.
-- `document_search_springAi_service` queries the same Azure AI Search index and applies user security filters using `folder_id`, `blob_uri`, and `prestage.files_in_index`.
-- PostgreSQL schema `prestage` is the shared control plane for folder permissions, file stability, ingestion jobs, indexed chunk IDs, and audit history.
+- `document_search_springAi_service` queries the same Azure AI Search index and applies user security filters using `folder_id`, `blob_uri`, and `demo.files_in_index`.
+- PostgreSQL schema `demo` is the shared control plane for folder permissions, file stability, ingestion jobs, indexed chunk IDs, and audit history.
 
 Shared tables added for the Java indexer migration:
 
-- `prestage.ingestion_jobs` replaces Python queue/polling state.
-- `prestage.indexed_chunks` replaces CSV chunk/document-id tracking.
-- `prestage.index_audit_logs` replaces ad hoc print/CSV audit trails.
-- `prestage.files_in_index` remains the query-time stability filter used by this service.
+- `demo.ingestion_jobs` replaces Python queue/polling state.
+- `demo.indexed_chunks` replaces CSV chunk/document-id tracking.
+- `demo.index_audit_logs` replaces ad hoc print/CSV audit trails.
+- `demo.files_in_index` remains the query-time stability filter used by this service.
 
 Current migration status:
 
 - Phase 1 complete: Java indexing service foundation, config binding, JPA repositories, and shared tracking schema.
 - Phase 2 complete: blob inventory scanning, folder resolution, ingestion/deletion queue insertion, manual scan endpoints, and optional scheduled scanning.
-- Remaining core migration complete: queued job processing now downloads blobs, parses documents with Apache Tika, chunks text, enriches metadata, generates Spring AI embeddings, uploads/deletes Azure AI Search documents, and updates `prestage.files_in_index` / `prestage.ingestion_jobs`.
+- Remaining core migration complete: queued job processing now downloads blobs, parses documents with Apache Tika, chunks text, enriches metadata, generates Spring AI embeddings, uploads/deletes Azure AI Search documents, and updates `demo.files_in_index` / `demo.ingestion_jobs`.
 - Remaining hardening work: Azure Document Intelligence coordinate spans, higher-throughput embedding batching, and production observability dashboards.
 
 Useful indexing endpoints:

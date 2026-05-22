@@ -16,7 +16,7 @@ class UserPermissionManager:
     """
     Manages user-based document access control and file state filtering.
     
-    Uses prestage.document_repository_user_mapping to determine which folders
+    Uses demo.document_repository_user_mapping to determine which folders
     a user CANNOT access (restricted folders), then filters search results accordingly.
     
     IMPORTANT: The folders_access column contains folder IDs the user is RESTRICTED from.
@@ -58,7 +58,7 @@ class UserPermissionManager:
                     # CORRECTED: folders_access contains the folders they CANNOT access
                     query = """
                         SELECT DISTINCT folders_access 
-                        FROM prestage.document_repository_user_mapping 
+                        FROM demo.document_repository_user_mapping 
                         WHERE user_name = %s
                     """
                     cur.execute(query, (username,))
@@ -78,7 +78,7 @@ class UserPermissionManager:
                     # Calculate accessible folders for logging purposes
                     cur.execute("""
                         SELECT DISTINCT id::text 
-                        FROM prestage.documents 
+                        FROM demo.documents 
                         WHERE is_file = false
                     """)
                     all_folders = {row['id'] for row in cur.fetchall()}
@@ -106,14 +106,14 @@ class UserPermissionManager:
                     cur.execute("""
                         SELECT EXISTS (
                             SELECT FROM information_schema.tables 
-                            WHERE table_schema = 'prestage' 
+                            WHERE table_schema = 'demo' 
                             AND table_name = 'files_in_index'
                         );
                     """)
                     if not cur.fetchone()[0]:
                         return set()
 
-                    cur.execute("SELECT blob_uri FROM prestage.files_in_index WHERE status != 'stable'")
+                    cur.execute("SELECT blob_uri FROM demo.files_in_index WHERE status != 'stable'")
                     return {row[0] for row in cur.fetchall()}
         except Exception as e:
             print(f"   ⚠️  Error fetching unstable files: {e}")

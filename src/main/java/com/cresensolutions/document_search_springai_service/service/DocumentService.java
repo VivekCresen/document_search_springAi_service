@@ -143,7 +143,7 @@ public interface DocumentService {
 
     /**
      * Synchronizes all blobs from the Azure storage container into the file_metadata table
-     * and the prestage.documents hierarchical tree. This ensures that any files directly 
+     * and the demo.documents hierarchical tree. This ensures that any files directly 
      * uploaded to Azure are properly indexed in the database.
      */
     void syncAllMetadataFromAzure();

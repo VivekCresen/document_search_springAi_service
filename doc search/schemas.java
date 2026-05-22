@@ -340,12 +340,12 @@ class LlmIntentResponse {
 
 /*
 ────────────────────────────────────────────────────────────────
-TABLE 1: prestage.document_repository_user_mapping
+TABLE 1: demo.document_repository_user_mapping
 Purpose : Folder-level access control.
           folders_access lists folder IDs the user is RESTRICTED from.
           User can access ALL folders EXCEPT those listed here.
 ────────────────────────────────────────────────────────────────
-CREATE TABLE prestage.document_repository_user_mapping (
+CREATE TABLE demo.document_repository_user_mapping (
     id              SERIAL PRIMARY KEY,
     user_name       VARCHAR(255) NOT NULL,   -- email used as principal
     folders_access  INTEGER,                 -- ONE restricted folder_id per row
@@ -355,33 +355,33 @@ CREATE TABLE prestage.document_repository_user_mapping (
 );
 
 -- Index for fast permission lookup on every query
-CREATE INDEX idx_drm_user_name ON prestage.document_repository_user_mapping(user_name);
+CREATE INDEX idx_drm_user_name ON demo.document_repository_user_mapping(user_name);
 
 
 ────────────────────────────────────────────────────────────────
-TABLE 2: prestage.documents
+TABLE 2: demo.documents
 Purpose : File/folder registry.
           is_file=false rows are folders; their id is used as folder_id
           in document_repository_user_mapping and the search index.
 ────────────────────────────────────────────────────────────────
-CREATE TABLE prestage.documents (
+CREATE TABLE demo.documents (
     id          SERIAL PRIMARY KEY,
     name        VARCHAR(512) NOT NULL,
     is_file     BOOLEAN      NOT NULL DEFAULT FALSE,  -- false = folder, true = file
-    parent_id   INTEGER REFERENCES prestage.documents(id),
+    parent_id   INTEGER REFERENCES demo.documents(id),
     created_at  TIMESTAMPTZ  DEFAULT NOW()
 );
 
-CREATE INDEX idx_docs_is_file ON prestage.documents(is_file);
+CREATE INDEX idx_docs_is_file ON demo.documents(is_file);
 
 
 ────────────────────────────────────────────────────────────────
-TABLE 3: prestage.files_in_index
+TABLE 3: demo.files_in_index
 Purpose : Real-time file stability tracking.
           Only status='stable' blobs are served to users.
           Ingestion pipeline updates this table as files are processed.
 ────────────────────────────────────────────────────────────────
-CREATE TABLE prestage.files_in_index (
+CREATE TABLE demo.files_in_index (
     id          SERIAL PRIMARY KEY,
     blob_uri    TEXT         NOT NULL UNIQUE,  -- full Azure Blob URI
     status      VARCHAR(50)  NOT NULL          -- 'stable' | 'ingestion_inp' | 'to_be_deleted'
@@ -390,17 +390,17 @@ CREATE TABLE prestage.files_in_index (
     updated_at  TIMESTAMPTZ  DEFAULT NOW()
 );
 
-CREATE INDEX idx_fii_status   ON prestage.files_in_index(status);
-CREATE INDEX idx_fii_blob_uri ON prestage.files_in_index(blob_uri);
+CREATE INDEX idx_fii_status   ON demo.files_in_index(status);
+CREATE INDEX idx_fii_blob_uri ON demo.files_in_index(blob_uri);
 
 
 ────────────────────────────────────────────────────────────────
-TABLE 4: prestage.db_search_hist_sessions
+TABLE 4: demo.db_search_hist_sessions
 Purpose : One row per conversation session.
           Composite unique key (chat_id, user_id) allows the same
           chat_id to be reused across different users safely.
 ────────────────────────────────────────────────────────────────
-CREATE TABLE prestage.db_search_hist_sessions (
+CREATE TABLE demo.db_search_hist_sessions (
     id                SERIAL PRIMARY KEY,
     chat_id           VARCHAR(50)  NOT NULL,       -- client-supplied conversation UUID
     user_id           INTEGER,                     -- numeric user id (nullable for anonymous)
@@ -410,17 +410,17 @@ CREATE TABLE prestage.db_search_hist_sessions (
     CONSTRAINT db_search_hist_sessions_chat_user_key UNIQUE (chat_id, user_id)
 );
 
-CREATE INDEX idx_sess_chat_id ON prestage.db_search_hist_sessions(chat_id);
-CREATE INDEX idx_sess_user_id ON prestage.db_search_hist_sessions(user_id);
+CREATE INDEX idx_sess_chat_id ON demo.db_search_hist_sessions(chat_id);
+CREATE INDEX idx_sess_user_id ON demo.db_search_hist_sessions(user_id);
 
 
 ────────────────────────────────────────────────────────────────
-TABLE 5: prestage.db_search_hist_messages
+TABLE 5: demo.db_search_hist_messages
 Purpose : Every user question and assistant answer per conversation.
           Fetched (DESC, LIMIT 10) to build conversation context for
           standalone query rewriting.
 ────────────────────────────────────────────────────────────────
-CREATE TABLE prestage.db_search_hist_messages (
+CREATE TABLE demo.db_search_hist_messages (
     id            BIGSERIAL PRIMARY KEY,
     chat_id       VARCHAR(50)  NOT NULL,
     user_id       INTEGER,
@@ -430,10 +430,10 @@ CREATE TABLE prestage.db_search_hist_messages (
     metadata      JSONB                    -- workflow metadata: intent, workflow, success, etc.
 );
 
-CREATE INDEX idx_msg_chat_id ON prestage.db_search_hist_messages(chat_id);
-CREATE INDEX idx_msg_user_id ON prestage.db_search_hist_messages(user_id);
+CREATE INDEX idx_msg_chat_id ON demo.db_search_hist_messages(chat_id);
+CREATE INDEX idx_msg_user_id ON demo.db_search_hist_messages(user_id);
 -- Composite index for the common get_recent_context query pattern
-CREATE INDEX idx_msg_chat_user ON prestage.db_search_hist_messages(chat_id, user_id);
+CREATE INDEX idx_msg_chat_user ON demo.db_search_hist_messages(chat_id, user_id);
 
 
 ────────────────────────────────────────────────────────────────
@@ -499,7 +499,7 @@ class ChatbotConfigProperties {
     // Azure AI Search
     String  azureSearchEndpoint;
     String  azureSearchKey;
-    String  azureSearchIndexName;          // e.g. "cresendemo_mmchatbot_v1"
+    String  azureSearchIndexName;          // e.g. "demo"
 
     // Azure Blob Storage
     String  azureStorageAccountName;

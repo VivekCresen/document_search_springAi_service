@@ -16,7 +16,7 @@ import java.util.Map;
  * Matches the requested 'chat_history' table structure.
  */
 @Entity
-@Table(name = "chat_history", schema = "prestage")
+@Table(name = "chat_history", schema = "demo")
 @Data
 @Builder
 @NoArgsConstructor

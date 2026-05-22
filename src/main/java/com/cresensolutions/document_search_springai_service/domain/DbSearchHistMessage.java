@@ -20,7 +20,7 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 
 @Entity
-@Table(name = "db_search_hist_messages", schema = "prestage")
+@Table(name = "db_search_hist_messages", schema = "demo")
 @Data
 @Builder
 @NoArgsConstructor

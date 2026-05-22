@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "document_repository_user_mapping", schema = "prestage")
+@Table(name = "document_repository_user_mapping", schema = "demo")
 @Data
 @Builder
 @NoArgsConstructor
@@ -29,7 +29,7 @@ public class DocumentRepositoryUserMapping {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "folders_access")
-    private PrestageDocument foldersAccess;
+    private demoDocument foldersAccess;
 
     @Column(name = "created_at")
     @Builder.Default

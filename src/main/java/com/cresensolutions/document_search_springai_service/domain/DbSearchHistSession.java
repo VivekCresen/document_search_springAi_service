@@ -18,7 +18,7 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(
         name = "db_search_hist_sessions",
-        schema = "prestage",
+        schema = "demo",
         uniqueConstraints = @UniqueConstraint(
                 name = "db_search_hist_sessions_chat_user_key",
                 columnNames = {"chat_id", "user_id"}

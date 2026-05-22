@@ -15,7 +15,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "users", 
-       schema = "prestage",
+       schema = "demo",
        uniqueConstraints = { 
            @UniqueConstraint(columnNames = "username"),
            @UniqueConstraint(columnNames = "email") 

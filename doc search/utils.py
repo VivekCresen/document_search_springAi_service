@@ -466,8 +466,8 @@ class SemanticCacheManager:
 # =============================================================================
 
 class ChatHistoryTracker:
-    _SESSIONS_TABLE = "prestage.db_search_hist_sessions"
-    _MESSAGES_TABLE = "prestage.db_search_hist_messages"
+    _SESSIONS_TABLE = "demo.db_search_hist_sessions"
+    _MESSAGES_TABLE = "demo.db_search_hist_messages"
 
     def __init__(self, db_config: Dict, user_id: int = None):
         self.db_config       = db_config

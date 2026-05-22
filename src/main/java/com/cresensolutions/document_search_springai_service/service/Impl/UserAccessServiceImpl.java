@@ -7,7 +7,7 @@ import com.cresensolutions.document_search_springai_service.dto.PermissionCheckR
 import com.cresensolutions.document_search_springai_service.dto.PermissionCheckResponse;
 import com.cresensolutions.document_search_springai_service.repository.DocumentRepositoryUserMappingRepository;
 import com.cresensolutions.document_search_springai_service.repository.FileInIndexRepository;
-import com.cresensolutions.document_search_springai_service.repository.PrestageDocumentRepository;
+import com.cresensolutions.document_search_springai_service.repository.demoDocumentRepository;
 import com.cresensolutions.document_search_springai_service.service.DocumentService;
 import com.cresensolutions.document_search_springai_service.service.UserAccessService;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +39,7 @@ public class UserAccessServiceImpl implements UserAccessService {
     private final DocumentRepositoryUserMappingRepository userMappingRepository;
     private final DocumentService documentService;
     private final FileInIndexRepository fileInIndexRepository;
-    private final PrestageDocumentRepository prestageDocumentRepository;
+    private final demoDocumentRepository demoDocumentRepository;
     private final com.cresensolutions.document_search_springai_service.repository.UserRepository userRepository;
 
     @Override
@@ -189,7 +189,7 @@ public class UserAccessServiceImpl implements UserAccessService {
 
     @Override
     public long countAccessibleFolders(String username) {
-        return Math.max(0, prestageDocumentRepository.countFolders() - getRestrictedFolders(username).size());
+        return Math.max(0, demoDocumentRepository.countFolders() - getRestrictedFolders(username).size());
     }
 
     @Override
@@ -214,7 +214,7 @@ public class UserAccessServiceImpl implements UserAccessService {
                 userMappingRepository.save(DocumentRepositoryUserMapping.builder()
                         .user(user)
                         .userName(username)
-                        .foldersAccess(prestageDocumentRepository.findById(Long.valueOf(folderId)).orElse(null))
+                        .foldersAccess(demoDocumentRepository.findById(Long.valueOf(folderId)).orElse(null))
                         .build());
             }
         }

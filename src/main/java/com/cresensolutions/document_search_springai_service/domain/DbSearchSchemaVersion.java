@@ -9,10 +9,10 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 
 /**
- * Maps to prestage.db_search_schema_versions — stores the JSON schema for each view version.
+ * Maps to demo.db_search_schema_versions — stores the JSON schema for each view version.
  */
 @Entity
-@Table(name = "db_search_schema_versions", schema = "prestage")
+@Table(name = "db_search_schema_versions", schema = "demo")
 @Getter
 @Setter
 @NoArgsConstructor

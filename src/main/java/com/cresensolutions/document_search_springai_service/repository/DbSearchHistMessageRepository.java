@@ -14,7 +14,7 @@ public interface DbSearchHistMessageRepository extends JpaRepository<DbSearchHis
 
     @Query(value = """
             SELECT *
-            FROM prestage.db_search_hist_messages
+            FROM demo.db_search_hist_messages
             WHERE chat_id = :chatId
               AND user_id IS NOT DISTINCT FROM :userId
             ORDER BY id DESC

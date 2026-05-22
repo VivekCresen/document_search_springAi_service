@@ -242,7 +242,7 @@ public class DocumentController {
     /**
      * Triggers a manual synchronization of Azure blobs to the database.
      * This will populate both 'file_metadata' and the hierarchical
-     * 'prestage.documents' tree.
+     * 'demo.documents' tree.
      */
     @PostMapping("/sync-from-azure")
     @Operation(summary = "Sync all blobs from Azure", description = "Scan Azure container and ensure all blobs have metadata records in DB (both flat metadata and hierarchical tree)")

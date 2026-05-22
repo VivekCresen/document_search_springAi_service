@@ -16,10 +16,10 @@ import com.cresensolutions.document_search_springai_service.dto.DownloadedFile;
 import com.cresensolutions.document_search_springai_service.domain.FileInIndex;
 import com.cresensolutions.document_search_springai_service.domain.FileMetadata;
 import com.cresensolutions.document_search_springai_service.domain.FilePath;
-import com.cresensolutions.document_search_springai_service.domain.PrestageDocument;
+import com.cresensolutions.document_search_springai_service.domain.demoDocument;
 import com.cresensolutions.document_search_springai_service.repository.FileInIndexRepository;
 import com.cresensolutions.document_search_springai_service.repository.FileMetadataRepository;
-import com.cresensolutions.document_search_springai_service.repository.PrestageDocumentRepository;
+import com.cresensolutions.document_search_springai_service.repository.demoDocumentRepository;
 import com.cresensolutions.document_search_springai_service.repository.UserRepository;
 import com.cresensolutions.document_search_springai_service.domain.User;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -65,7 +65,7 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
     private final BlobServiceClient blobServiceClient;
     private final FileMetadataRepository fileMetadataRepository;
     private final FileInIndexRepository fileInIndexRepository;
-    private final PrestageDocumentRepository prestageDocumentRepository;
+    private final demoDocumentRepository demoDocumentRepository;
     private final CloudProperty cloudProperty;
     private final ObjectMapper objectMapper;
     private final UserRepository userRepository;
@@ -388,8 +388,8 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
                 // 1. Sync the flat metadata table (file_metadata) which is used for rapid searches
                 syncFileMetadata(blobItem, filePath);
 
-                // 2. Sync the hierarchical tree (prestage.documents) which is used for folder browsing
-                syncPrestageDocuments(segments);
+                // 2. Sync the hierarchical tree (demo.documents) which is used for folder browsing
+                syncdemoDocuments(segments);
 
             } catch (Exception e) {
                 log.error("Failed to sync metadata for blob: {}", blobItem.getName(), e);
@@ -444,24 +444,24 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
     }
 
     /**
-     * Ensures that every segment of a file path exists in the hierarchical 'prestage.documents' table.
+     * Ensures that every segment of a file path exists in the hierarchical 'demo.documents' table.
      * For example, for "A/B/C.pdf", it ensures folder 'A' exists, folder 'B' exists under 'A', 
      * and file 'C.pdf' exists under 'B'.
      * 
      * @param segments the list of path segments
      */
-    private void syncPrestageDocuments(List<String> segments) {
-        PrestageDocument parent = null;
+    private void syncdemoDocuments(List<String> segments) {
+        demoDocument parent = null;
         for (int i = 0; i < segments.size(); i++) {
             String segment = segments.get(i);
             boolean isFile = (i == segments.size() - 1);
             
-            final PrestageDocument currentParent = parent;
+            final demoDocument currentParent = parent;
             // Find existing segment at this level or create a new one
-            parent = prestageDocumentRepository.findByNameAndParentAndFile(segment, currentParent, isFile)
+            parent = demoDocumentRepository.findByNameAndParentAndFile(segment, currentParent, isFile)
                     .orElseGet(() -> {
-                        log.info("Sync: Creating prestage document entry: {} (file={})", segment, isFile);
-                        return prestageDocumentRepository.save(PrestageDocument.builder()
+                        log.info("Sync: Creating demo document entry: {} (file={})", segment, isFile);
+                        return demoDocumentRepository.save(demoDocument.builder()
                                 .name(segment)
                                 .file(isFile)
                                 .parent(currentParent)

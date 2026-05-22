@@ -11,6 +11,6 @@ public class AzureSearchProperty {
 
     private String endpoint;
     private String apiKey;
-    private String indexName = "cresendemo_mmchatbot_v1";
+    private String indexName = "demo";
     private String apiVersion = "2023-11-01";
 }

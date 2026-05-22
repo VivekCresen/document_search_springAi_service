@@ -7,7 +7,7 @@ import com.cresensolutions.document_search_springai_service.dto.PermissionCheckR
 import com.cresensolutions.document_search_springai_service.dto.PermissionCheckResponse;
 import com.cresensolutions.document_search_springai_service.repository.DocumentRepositoryUserMappingRepository;
 import com.cresensolutions.document_search_springai_service.repository.FileInIndexRepository;
-import com.cresensolutions.document_search_springai_service.repository.PrestageDocumentRepository;
+import com.cresensolutions.document_search_springai_service.repository.demoDocumentRepository;
 import com.cresensolutions.document_search_springai_service.repository.UserRepository;
 import com.cresensolutions.document_search_springai_service.service.Impl.UserAccessServiceImpl;
 import org.junit.jupiter.api.DisplayName;
@@ -35,7 +35,7 @@ class UserAccessServiceImplTest {
     @Mock DocumentRepositoryUserMappingRepository userMappingRepository;
     @Mock DocumentService documentService;
     @Mock FileInIndexRepository fileInIndexRepository;
-    @Mock PrestageDocumentRepository prestageDocumentRepository;
+    @Mock demoDocumentRepository demoDocumentRepository;
     @Mock UserRepository userRepository;
 
     @InjectMocks UserAccessServiceImpl service;
@@ -383,7 +383,7 @@ class UserAccessServiceImplTest {
     @DisplayName("countAccessibleFolders: total minus restricted")
     void countAccessibleFolders_success() {
         when(userMappingRepository.findRestrictedFolderIds("vivek", null)).thenReturn(List.of(1L, 2L));
-        when(prestageDocumentRepository.countFolders()).thenReturn(10L);
+        when(demoDocumentRepository.countFolders()).thenReturn(10L);
 
         long count = service.countAccessibleFolders("vivek");
 

@@ -98,7 +98,7 @@ azure:
   search:
     endpoint: ${AZURE_SEARCH_ENDPOINT:https://dummy.search.windows.net}
     api-key: ${AZURE_SEARCH_ADMIN_KEY:${AZURE_SEARCH_KEY:dummy-key}}
-    index-name: ${AZURE_SEARCH_INDEX_NAME:cresendemo_mmchatbot_v1}
+    index-name: ${AZURE_SEARCH_INDEX_NAME:demo}
     api-version: ${AZURE_SEARCH_API_VERSION:2023-11-01}
 
 doc-search:

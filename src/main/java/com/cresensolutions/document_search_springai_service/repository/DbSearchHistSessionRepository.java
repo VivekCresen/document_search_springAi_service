@@ -17,7 +17,7 @@ public interface DbSearchHistSessionRepository extends JpaRepository<DbSearchHis
 
     @Modifying
     @Query(value = """
-            INSERT INTO prestage.db_search_hist_sessions (chat_id, user_id)
+            INSERT INTO demo.db_search_hist_sessions (chat_id, user_id)
             VALUES (:chatId, :userId)
             ON CONFLICT (chat_id, user_id) DO NOTHING
             """, nativeQuery = true)
@@ -25,7 +25,7 @@ public interface DbSearchHistSessionRepository extends JpaRepository<DbSearchHis
 
     @Modifying
     @Query(value = """
-            UPDATE prestage.db_search_hist_sessions
+            UPDATE demo.db_search_hist_sessions
             SET last_activity_at = NOW(),
                 message_count = message_count + :incrementBy
             WHERE chat_id = :chatId

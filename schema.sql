@@ -6,12 +6,12 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- =============================================================================
 -- SCHEMA
 -- =============================================================================
-CREATE SCHEMA IF NOT EXISTS prestage;
+CREATE SCHEMA IF NOT EXISTS demo;
 
 -- =============================================================================
 -- USERS TABLE
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS prestage.users (
+CREATE TABLE IF NOT EXISTS demo.users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     username       VARCHAR(50)  NOT NULL UNIQUE,
@@ -25,15 +25,15 @@ CREATE TABLE IF NOT EXISTS prestage.users (
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_username
-    ON prestage.users(username);
+    ON demo.users(username);
 
 CREATE INDEX IF NOT EXISTS idx_users_email
-    ON prestage.users(email);
+    ON demo.users(email);
 
 -- =============================================================================
 -- FILE METADATA
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS prestage.file_metadata (
+CREATE TABLE IF NOT EXISTS demo.file_metadata (
     id BIGSERIAL PRIMARY KEY,
 
     filepath JSONB NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS prestage.file_metadata (
 
     CONSTRAINT fk_file_metadata_user
         FOREIGN KEY (user_id)
-        REFERENCES prestage.users(id)
+        REFERENCES demo.users(id)
         ON DELETE CASCADE,
 
     CONSTRAINT chk_file_metadata_status
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS prestage.file_metadata (
 -- =============================================================================
 -- DOCUMENTS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS prestage.documents (
+CREATE TABLE IF NOT EXISTS demo.documents (
     id BIGSERIAL PRIMARY KEY,
 
     name VARCHAR(512) NOT NULL,
@@ -88,19 +88,19 @@ CREATE TABLE IF NOT EXISTS prestage.documents (
 
     CONSTRAINT fk_documents_parent
         FOREIGN KEY (parent_id)
-        REFERENCES prestage.documents(id)
+        REFERENCES demo.documents(id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_documents_user
         FOREIGN KEY (created_by)
-        REFERENCES prestage.users(id)
+        REFERENCES demo.users(id)
         ON DELETE SET NULL
 );
 
 -- =============================================================================
 -- DOCUMENT REPOSITORY USER MAPPING
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS prestage.document_repository_user_mapping (
+CREATE TABLE IF NOT EXISTS demo.document_repository_user_mapping (
     id BIGSERIAL PRIMARY KEY,
 
     user_id UUID NOT NULL,
@@ -115,19 +115,19 @@ CREATE TABLE IF NOT EXISTS prestage.document_repository_user_mapping (
 
     CONSTRAINT fk_drum_user
         FOREIGN KEY (user_id)
-        REFERENCES prestage.users(id)
+        REFERENCES demo.users(id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_drum_folder
         FOREIGN KEY (folders_access)
-        REFERENCES prestage.documents(id)
+        REFERENCES demo.documents(id)
         ON DELETE CASCADE
 );
 
 -- =============================================================================
 -- FILES IN INDEX
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS prestage.files_in_index (
+CREATE TABLE IF NOT EXISTS demo.files_in_index (
     id BIGSERIAL PRIMARY KEY,
 
     blob_uri TEXT NOT NULL UNIQUE,
@@ -146,31 +146,31 @@ CREATE TABLE IF NOT EXISTS prestage.files_in_index (
 
     CONSTRAINT fk_files_index_folder
         FOREIGN KEY (folder_id)
-        REFERENCES prestage.documents(id)
+        REFERENCES demo.documents(id)
         ON DELETE SET NULL,
 
     CONSTRAINT fk_files_index_user
         FOREIGN KEY (indexed_by)
-        REFERENCES prestage.users(id)
+        REFERENCES demo.users(id)
         ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_files_in_index_status
-    ON prestage.files_in_index(status);
+    ON demo.files_in_index(status);
 
 CREATE INDEX IF NOT EXISTS idx_files_in_index_folder_status
-    ON prestage.files_in_index(folder_id, status);
+    ON demo.files_in_index(folder_id, status);
 
-ALTER TABLE prestage.files_in_index
+ALTER TABLE demo.files_in_index
     ADD COLUMN IF NOT EXISTS file_name TEXT;
 
-ALTER TABLE prestage.files_in_index
+ALTER TABLE demo.files_in_index
     ADD COLUMN IF NOT EXISTS last_modified_blob TIMESTAMPTZ;
 
 -- =============================================================================
 -- INGESTION JOBS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS prestage.ingestion_jobs (
+CREATE TABLE IF NOT EXISTS demo.ingestion_jobs (
     id BIGSERIAL PRIMARY KEY,
 
     blob_uri TEXT NOT NULL UNIQUE,
@@ -211,12 +211,12 @@ CREATE TABLE IF NOT EXISTS prestage.ingestion_jobs (
 
     CONSTRAINT fk_ingestion_jobs_folder
         FOREIGN KEY (folder_id)
-        REFERENCES prestage.documents(id)
+        REFERENCES demo.documents(id)
         ON DELETE SET NULL,
 
     CONSTRAINT fk_ingestion_jobs_user
         FOREIGN KEY (indexed_by)
-        REFERENCES prestage.users(id)
+        REFERENCES demo.users(id)
         ON DELETE SET NULL,
 
     CONSTRAINT chk_ingestion_jobs_status
@@ -234,30 +234,30 @@ CREATE TABLE IF NOT EXISTS prestage.ingestion_jobs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_ingestion_jobs_status_created
-    ON prestage.ingestion_jobs(status, created_at);
+    ON demo.ingestion_jobs(status, created_at);
 
 CREATE INDEX IF NOT EXISTS idx_ingestion_jobs_folder
-    ON prestage.ingestion_jobs(folder_id);
+    ON demo.ingestion_jobs(folder_id);
 
-ALTER TABLE prestage.ingestion_jobs
+ALTER TABLE demo.ingestion_jobs
     ADD COLUMN IF NOT EXISTS blob_name TEXT;
 
-ALTER TABLE prestage.ingestion_jobs
+ALTER TABLE demo.ingestion_jobs
     ADD COLUMN IF NOT EXISTS file_name TEXT;
 
-ALTER TABLE prestage.ingestion_jobs
+ALTER TABLE demo.ingestion_jobs
     ADD COLUMN IF NOT EXISTS blob_last_modified TIMESTAMPTZ;
 
-ALTER TABLE prestage.ingestion_jobs
+ALTER TABLE demo.ingestion_jobs
     ADD COLUMN IF NOT EXISTS blob_etag TEXT;
 
-ALTER TABLE prestage.ingestion_jobs
+ALTER TABLE demo.ingestion_jobs
     ADD COLUMN IF NOT EXISTS blob_size_bytes BIGINT;
 
 -- =============================================================================
 -- INDEXED CHUNKS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS prestage.indexed_chunks (
+CREATE TABLE IF NOT EXISTS demo.indexed_chunks (
     id BIGSERIAL PRIMARY KEY,
 
     job_id BIGINT,
@@ -276,20 +276,20 @@ CREATE TABLE IF NOT EXISTS prestage.indexed_chunks (
 
     CONSTRAINT fk_indexed_chunks_job
         FOREIGN KEY (job_id)
-        REFERENCES prestage.ingestion_jobs(id)
+        REFERENCES demo.ingestion_jobs(id)
         ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_indexed_chunks_blob_uri
-    ON prestage.indexed_chunks(blob_uri);
+    ON demo.indexed_chunks(blob_uri);
 
 CREATE INDEX IF NOT EXISTS idx_indexed_chunks_job
-    ON prestage.indexed_chunks(job_id);
+    ON demo.indexed_chunks(job_id);
 
 -- =============================================================================
 -- INDEX AUDIT LOGS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS prestage.index_audit_logs (
+CREATE TABLE IF NOT EXISTS demo.index_audit_logs (
     id BIGSERIAL PRIMARY KEY,
 
     job_id BIGINT,
@@ -308,20 +308,20 @@ CREATE TABLE IF NOT EXISTS prestage.index_audit_logs (
 
     CONSTRAINT fk_index_audit_logs_job
         FOREIGN KEY (job_id)
-        REFERENCES prestage.ingestion_jobs(id)
+        REFERENCES demo.ingestion_jobs(id)
         ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_index_audit_logs_blob_uri_created
-    ON prestage.index_audit_logs(blob_uri, created_at DESC);
+    ON demo.index_audit_logs(blob_uri, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_index_audit_logs_job
-    ON prestage.index_audit_logs(job_id);
+    ON demo.index_audit_logs(job_id);
 
 -- =============================================================================
 -- DB SEARCH SOURCES
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS prestage.db_search_sources (
+CREATE TABLE IF NOT EXISTS demo.db_search_sources (
     id BIGSERIAL PRIMARY KEY,
 
     view_name VARCHAR(255) NOT NULL UNIQUE,
@@ -340,14 +340,14 @@ CREATE TABLE IF NOT EXISTS prestage.db_search_sources (
 
     CONSTRAINT fk_db_search_sources_user
         FOREIGN KEY (created_by)
-        REFERENCES prestage.users(id)
+        REFERENCES demo.users(id)
         ON DELETE SET NULL
 );
 
 -- =============================================================================
 -- DB SEARCH SCHEMA VERSIONS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS prestage.db_search_schema_versions (
+CREATE TABLE IF NOT EXISTS demo.db_search_schema_versions (
     id BIGSERIAL PRIMARY KEY,
 
     source_id BIGINT NOT NULL,
@@ -364,12 +364,12 @@ CREATE TABLE IF NOT EXISTS prestage.db_search_schema_versions (
 
     CONSTRAINT fk_db_search_schema_source
         FOREIGN KEY (source_id)
-        REFERENCES prestage.db_search_sources(id)
+        REFERENCES demo.db_search_sources(id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_db_search_schema_user
         FOREIGN KEY (created_by)
-        REFERENCES prestage.users(id)
+        REFERENCES demo.users(id)
         ON DELETE SET NULL,
 
     CONSTRAINT uq_db_search_schema_source_version
@@ -379,7 +379,7 @@ CREATE TABLE IF NOT EXISTS prestage.db_search_schema_versions (
 -- =============================================================================
 -- DB SEARCH HISTORY SESSIONS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS prestage.db_search_hist_sessions (
+CREATE TABLE IF NOT EXISTS demo.db_search_hist_sessions (
     id BIGSERIAL PRIMARY KEY,
 
     chat_id VARCHAR(50) NOT NULL,
@@ -394,7 +394,7 @@ CREATE TABLE IF NOT EXISTS prestage.db_search_hist_sessions (
 
     CONSTRAINT fk_hist_sessions_user
         FOREIGN KEY (user_id)
-        REFERENCES prestage.users(id)
+        REFERENCES demo.users(id)
         ON DELETE CASCADE,
 
     CONSTRAINT uq_hist_chat_user
@@ -404,7 +404,7 @@ CREATE TABLE IF NOT EXISTS prestage.db_search_hist_sessions (
 -- =============================================================================
 -- DB SEARCH HISTORY MESSAGES
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS prestage.db_search_hist_messages (
+CREATE TABLE IF NOT EXISTS demo.db_search_hist_messages (
     id BIGSERIAL PRIMARY KEY,
 
     session_id BIGINT,
@@ -423,12 +423,12 @@ CREATE TABLE IF NOT EXISTS prestage.db_search_hist_messages (
 
     CONSTRAINT fk_hist_messages_session
         FOREIGN KEY (session_id)
-        REFERENCES prestage.db_search_hist_sessions(id)
+        REFERENCES demo.db_search_hist_sessions(id)
         ON DELETE CASCADE,
 
     CONSTRAINT fk_hist_messages_user
         FOREIGN KEY (user_id)
-        REFERENCES prestage.users(id)
+        REFERENCES demo.users(id)
         ON DELETE CASCADE,
 
     CONSTRAINT chk_hist_message_type
@@ -444,7 +444,7 @@ CREATE TABLE IF NOT EXISTS prestage.db_search_hist_messages (
 -- =============================================================================
 -- CHAT HISTORY
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS prestage.chat_history (
+CREATE TABLE IF NOT EXISTS demo.chat_history (
     id BIGSERIAL PRIMARY KEY,
 
     user_id UUID NOT NULL UNIQUE,
@@ -465,6 +465,6 @@ CREATE TABLE IF NOT EXISTS prestage.chat_history (
 
     CONSTRAINT fk_chat_history_user
         FOREIGN KEY (user_id)
-        REFERENCES prestage.users(id)
+        REFERENCES demo.users(id)
         ON DELETE CASCADE
 );

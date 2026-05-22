@@ -9,10 +9,10 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 
 /**
- * Maps to prestage.db_search_sources — one row per DB view registered for NL-to-SQL.
+ * Maps to demo.db_search_sources — one row per DB view registered for NL-to-SQL.
  */
 @Entity
-@Table(name = "db_search_sources", schema = "prestage")
+@Table(name = "db_search_sources", schema = "demo")
 @Getter
 @Setter
 @NoArgsConstructor

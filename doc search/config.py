@@ -3,7 +3,7 @@
 #
 # Changes from v2:
 #   - VIEW_SCHEMAS / VIEW_DESCRIPTIONS / VIEW_ROUTING_METADATA now loaded from
-#     the database (prestage.db_search_sources + prestage.db_search_schema_versions)
+#     the database (demo.db_search_sources + demo.db_search_schema_versions)
 #     via schema_registry.py on every startup.
 #   - _registry_lock (RLock) guards all reads/writes to those three dicts so a
 #     background refresh and an in-flight question never race on the same dict.
@@ -59,7 +59,7 @@ AZURE_OPENAI_EMBEDDING_DEPLOYMENT = os.getenv('AZURE_OPENAI_EMBEDDING_DEPLOYMENT
 
 AZURE_SEARCH_ENDPOINT   = os.getenv('AZURE_SEARCH_ENDPOINT')
 AZURE_SEARCH_KEY        = os.getenv('AZURE_SEARCH_ADMIN_KEY')
-AZURE_SEARCH_INDEX_NAME = 'cresendemo_mmchatbot_v1'
+AZURE_SEARCH_INDEX_NAME = 'demo'
 
 TARGET_ENDPOINT = os.getenv('TARGET_ENDPOINT')
 

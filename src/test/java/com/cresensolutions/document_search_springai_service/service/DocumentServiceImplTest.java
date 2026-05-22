@@ -12,10 +12,10 @@ import com.cresensolutions.document_search_springai_service.config.CloudProperty
 import com.cresensolutions.document_search_springai_service.domain.FileInIndex;
 import com.cresensolutions.document_search_springai_service.domain.FileMetadata;
 import com.cresensolutions.document_search_springai_service.domain.FilePath;
-import com.cresensolutions.document_search_springai_service.domain.PrestageDocument;
+import com.cresensolutions.document_search_springai_service.domain.demoDocument;
 import com.cresensolutions.document_search_springai_service.repository.FileInIndexRepository;
 import com.cresensolutions.document_search_springai_service.repository.FileMetadataRepository;
-import com.cresensolutions.document_search_springai_service.repository.PrestageDocumentRepository;
+import com.cresensolutions.document_search_springai_service.repository.demoDocumentRepository;
 import com.cresensolutions.document_search_springai_service.repository.UserRepository;
 import com.cresensolutions.document_search_springai_service.service.Impl.DocumentServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -54,7 +54,7 @@ class DocumentServiceImplTest {
     @Mock BlobClient blobClient;
     @Mock FileMetadataRepository fileMetadataRepository;
     @Mock FileInIndexRepository fileInIndexRepository;
-    @Mock PrestageDocumentRepository prestageDocumentRepository;
+    @Mock demoDocumentRepository demoDocumentRepository;
     @Mock CloudProperty cloudProperty;
     @Mock ObjectMapper objectMapper;
     @Mock UserRepository userRepository;
@@ -387,10 +387,10 @@ class DocumentServiceImplTest {
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"filePath\":[\"folder\",\"doc\",\"file.pdf\"]}");
         when(fileMetadataRepository.findByFilePathJson(any())).thenReturn(Optional.empty());
 
-        // Mock prestage repository (hierarchical tree)
-        when(prestageDocumentRepository.findByNameAndParentAndFile(anyString(), any(), anyBoolean()))
+        // Mock demo repository (hierarchical tree)
+        when(demoDocumentRepository.findByNameAndParentAndFile(anyString(), any(), anyBoolean()))
                 .thenReturn(Optional.empty());
-        when(prestageDocumentRepository.save(any(PrestageDocument.class))).thenAnswer(i -> i.getArgument(0));
+        when(demoDocumentRepository.save(any(demoDocument.class))).thenAnswer(i -> i.getArgument(0));
 
         // Execute sync
         service.syncAllMetadataFromAzure();
@@ -402,7 +402,7 @@ class DocumentServiceImplTest {
         ));
 
         // Verify that tree nodes (folder, doc, file.pdf) were saved
-        verify(prestageDocumentRepository, atLeast(3)).save(any(PrestageDocument.class));
+        verify(demoDocumentRepository, atLeast(3)).save(any(demoDocument.class));
     }
 
     // -------------------------------------------------------------------------

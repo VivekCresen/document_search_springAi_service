@@ -10,7 +10,7 @@ import java.time.OffsetDateTime;
 
 
 @Entity
-@Table(name = "files_in_index", schema = "prestage")
+@Table(name = "files_in_index", schema = "demo")
 @Data
 @Builder
 @NoArgsConstructor
@@ -26,7 +26,7 @@ public class FileInIndex {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "folder_id")
-    private PrestageDocument folder;
+    private demoDocument folder;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "indexed_by")
