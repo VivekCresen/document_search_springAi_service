@@ -1,6 +1,6 @@
 package com.cresensolutions.document_search_springai_service.repository;
 
-import com.cresensolutions.document_search_springai_service.domain.PrestageDocument;
+import com.cresensolutions.document_search_springai_service.domain.demoDocument;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -9,12 +9,12 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface PrestageDocumentRepository extends JpaRepository<PrestageDocument, Long> {
+public interface demoDocumentRepository extends JpaRepository<demoDocument, Long> {
 
-    @Query("SELECT d.id FROM PrestageDocument d WHERE d.file = false")
+    @Query("SELECT d.id FROM demoDocument d WHERE d.file = false")
     List<Long> findAllFolderIds();
 
-    @Query("SELECT COUNT(d) FROM PrestageDocument d WHERE d.file = false")
+    @Query("SELECT COUNT(d) FROM demoDocument d WHERE d.file = false")
     long countFolders();
 
     /**
@@ -26,5 +26,5 @@ public interface PrestageDocumentRepository extends JpaRepository<PrestageDocume
      * @param file   true if searching for a file, false for a folder
      * @return the document if found
      */
-    Optional<PrestageDocument> findByNameAndParentAndFile(String name, PrestageDocument parent, boolean file);
+    Optional<demoDocument> findByNameAndParentAndFile(String name, demoDocument parent, boolean file);
 }

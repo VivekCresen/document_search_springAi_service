@@ -17,16 +17,16 @@ import lombok.NoArgsConstructor;
 import java.time.OffsetDateTime;
 
 /**
- * Entity representing the hierarchical file/folder structure in the 'prestage.documents' table.
+ * Entity representing the hierarchical file/folder structure in the 'demo.documents' table.
  * Used for folder-based browsing in the UI.
  */
 @Entity
-@Table(name = "documents", schema = "prestage")
+@Table(name = "documents", schema = "demo")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PrestageDocument {
+public class demoDocument {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,7 +44,7 @@ public class PrestageDocument {
     /** Recursive relationship to the parent document/folder. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
-    private PrestageDocument parent;
+    private demoDocument parent;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
