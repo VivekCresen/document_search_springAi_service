@@ -87,6 +87,9 @@ public class ConsolidatedCitationManagerImpl implements ConsolidatedCitationMana
             citation.put("download_link", highlighted.getDownloadLink());
             citation.put("view_link", highlighted.getViewLink());
             citation.put("highlighted_pages", highlighted.getHighlightedPages());
+            citation.put("text", passage.text());
+            citation.put("relevance", passage.relevance());
+            citation.put("page", passage.page());
             citations.put(String.valueOf(index++), citation);
         }
         return citations;

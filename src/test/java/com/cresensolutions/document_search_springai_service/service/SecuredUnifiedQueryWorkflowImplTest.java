@@ -77,7 +77,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
     }
 
     private void stubPhase0And1(String intent) {
-        when(standaloneQueryService.createStandaloneQuery(anyString(), anyString())).thenReturn("standalone q");
+        when(standaloneQueryService.createStandaloneQuery(anyString(), anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(userAccessService.createSearchFilter(anyString())).thenReturn("filter");
         when(securedIntentClassifier.searchRelevantDocumentsWithSecurity(anyString(), anyString(), anyInt()))
                 .thenReturn(List.of());

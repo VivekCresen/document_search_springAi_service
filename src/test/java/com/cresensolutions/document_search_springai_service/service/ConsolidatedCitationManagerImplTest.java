@@ -48,7 +48,13 @@ class ConsolidatedCitationManagerImplTest {
     @Test
     @DisplayName("createCitationsFromPassages: resolves blob URI path and delegates to PdfHighlightManager")
     void createCitationsFromPassages_resolvesUri() {
-        SupportingPassage passage = SupportingPassage.builder().source("file1.pdf").text("text").individualPassages(List.of("text1")).build();
+        SupportingPassage passage = SupportingPassage.builder()
+                .source("file1.pdf")
+                .text("text")
+                .individualPassages(List.of("text1"))
+                .relevance("matches exact answer")
+                .page("3, 4")
+                .build();
         // Using an absolute URI from which we extract the path
         RagSourceDocument sourceDoc = RagSourceDocument.builder()
                 .source("file1.pdf")
@@ -78,6 +84,9 @@ class ConsolidatedCitationManagerImplTest {
         assertThat(citation.get("view_link")).isEqualTo("view_url");
         assertThat(citation.get("download_link")).isEqualTo("download_url");
         assertThat(citation.get("highlighted_pages")).isEqualTo(List.of(1));
+        assertThat(citation.get("text")).isEqualTo("text");
+        assertThat(citation.get("relevance")).isEqualTo("matches exact answer");
+        assertThat(citation.get("page")).isEqualTo("3, 4");
     }
 
     @Test

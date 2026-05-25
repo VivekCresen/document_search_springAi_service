@@ -116,7 +116,7 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
         List<SearchResultDocument> prefetchedDocs = securedIntentClassifier.searchRelevantDocumentsWithSecurity(
                 standaloneQuery,
                 searchFilter,
-                5
+                10
         );
         
         // Phase 2: Classify intent based on the query and prefetched document metadata

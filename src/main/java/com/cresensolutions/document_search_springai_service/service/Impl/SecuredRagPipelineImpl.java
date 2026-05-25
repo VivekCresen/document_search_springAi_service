@@ -74,6 +74,7 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
             - Copy "exact_text" VERBATIM from the CONTEXT DOCUMENTS — word-for-word.
             - Do NOT paraphrase or translate "exact_text".
             - Write "explains" in the same language as the USER QUESTION.
+            - FULL COVERAGE REQUIREMENT: If the answer or supporting evidence is present in multiple different context documents, you MUST extract the corresponding "exact_text" from EACH of those documents. Do not just pick one document; list supporting extractions from ALL relevant source files as separate elements in the "raw_extractions" list so that they are all fully cited and highlighted.
 
             ===== RESPONSE FORMAT (valid JSON only) =====
             {
