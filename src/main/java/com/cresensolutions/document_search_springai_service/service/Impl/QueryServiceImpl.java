@@ -63,6 +63,15 @@ public class QueryServiceImpl implements QueryService {
                 });
     }
 
+    /**
+     * Constructs the unified EnvelopeResponse descriptor containing search results,
+     * citations, standalone query history, and system response timestamps.
+     *
+     * @param data original RequestData parameters
+     * @param conversationId current conversation session token
+     * @param result raw workflow execution maps and payloads
+     * @return populated EnvelopeResponse
+     */
     private EnvelopeResponse buildResponse(RequestData data, String conversationId, Map<String, Object> result) {
         String standaloneQuery = result.getOrDefault(Common.RESULT_STANDALONE_QUERY, data.getQuestion()).toString();
         String context = result.getOrDefault(Common.RESULT_CONVERSATION_CONTEXT, Common.EMPTY).toString();
@@ -95,6 +104,14 @@ public class QueryServiceImpl implements QueryService {
         return new EnvelopeResponse(responseData);
     }
 
+    /**
+     * Builds an AnswerItem matching text and tabular results based on the response layout type.
+     *
+     * @param answer text answer string
+     * @param result workflow result map
+     * @param responseType layout format representation (text, table, hybrid)
+     * @return constructed AnswerItem
+     */
     private AnswerItem buildAnswerItem(String answer, Map<String, Object> result, String responseType) {
         AnswerItem.AnswerItemBuilder builder = AnswerItem.builder();
         if (Common.TEXT_RESPONSE_TYPE.equals(responseType) || Common.TEXT_TABLE_RESPONSE_TYPE.equals(responseType)) {
@@ -106,6 +123,12 @@ public class QueryServiceImpl implements QueryService {
         return builder.build();
     }
 
+    /**
+     * Resolves the user-facing responseType formatting label from the internal query type.
+     *
+     * @param result raw workflow result map
+     * @return user-facing string indicator (text, table, text_table)
+     */
     private String apiResponseType(Map<String, Object> result) {
         String internalType = result.getOrDefault(Common.RESULT_INTERNAL_TYPE, Common.TEXT_RESPONSE_TYPE).toString();
         return switch (internalType) {
@@ -115,6 +138,12 @@ public class QueryServiceImpl implements QueryService {
         };
     }
 
+    /**
+     * Casts and extracts tabular raw datasets safely into lists of key-value maps.
+     *
+     * @param value raw data payload
+     * @return formatted table payload list
+     */
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> tablePayload(Object value) {
         if (value instanceof List<?> list) {
@@ -126,6 +155,12 @@ public class QueryServiceImpl implements QueryService {
         return Collections.emptyList();
     }
 
+    /**
+     * Resolves the conversation ID, generating a new one if the incoming request parameter is blank.
+     *
+     * @param conversationId raw input identifier
+     * @return validated non-blank conversation session identifier
+     */
     private String resolveConversationId(String conversationId) {
         if (CommonUtils.hasText(conversationId)) {
             return conversationId;

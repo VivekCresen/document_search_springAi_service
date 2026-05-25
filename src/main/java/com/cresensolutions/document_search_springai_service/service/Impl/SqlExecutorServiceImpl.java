@@ -33,6 +33,13 @@ public class SqlExecutorServiceImpl implements SqlExecutorService {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
+    /**
+     * Executes the given SELECT statement against the database, enforcing read-only constraints
+     * and truncating the returned rows up to MAX_ROWS.
+     *
+     * @param sql target SQL SELECT statement string
+     * @return the SqlExecutionResult containing rows, count, and success status
+     */
     @Override
     public SqlExecutionResult execute(String sql) {
         if (sql == null || sql.isBlank()) {
@@ -67,8 +74,11 @@ public class SqlExecutorServiceImpl implements SqlExecutorService {
     }
 
     /**
-     * Converts JDBC types to JSON-serializable equivalents.
+     * Converts JDBC types inside a row to clean JSON-serializable equivalent representations.
      * Mirrors Python convert_results_to_json_serializable().
+     *
+     * @param row target database query row map
+     * @return converted JSON-serializable row map
      */
     private Map<String, Object> serializeRow(Map<String, Object> row) {
         Map<String, Object> result = new LinkedHashMap<>(row.size());
@@ -78,6 +88,12 @@ public class SqlExecutorServiceImpl implements SqlExecutorService {
         return result;
     }
 
+    /**
+     * Casts and serializes a specific value safely based on temporal or precision types.
+     *
+     * @param value raw database column value
+     * @return serializable representation of value
+     */
     private Object serializeValue(Object value) {
         if (value == null) {
             return null;

@@ -19,6 +19,11 @@ public class AdminDataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * Executes logic on application startup to ensure default admin user exists in database.
+     *
+     * @param args command line arguments
+     */
     @Override
     public void run(String... args) {
         if (!userRepository.existsByUserName("admin")) {

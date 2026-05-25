@@ -10,6 +10,10 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+/**
+ * Implementation of ResponseForwardingService that posts complete Query responses asynchronously
+ * to external targets configured in WorkflowProperties.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -18,6 +22,12 @@ public class ResponseForwardingServiceImpl implements ResponseForwardingService 
     private final WorkflowProperty workflowProperty;
     private final RestClient.Builder restClientBuilder;
 
+    /**
+     * Forwards a completed search query envelope response payload asynchronously to a configured third-party REST endpoint.
+     * Operation fails silently if the endpoint is not configured or throws exceptions.
+     *
+     * @param response the EnvelopeResponse payload to transmit
+     */
     @Override
     @Async("taskExecutor")
     public void forwardResponse(EnvelopeResponse response) {

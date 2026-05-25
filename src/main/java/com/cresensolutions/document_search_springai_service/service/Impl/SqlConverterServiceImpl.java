@@ -82,6 +82,17 @@ public class SqlConverterServiceImpl implements SqlConverterService {
     // Prompt builder
     // -------------------------------------------------------------------------
 
+    /**
+     * Constructs a comprehensive PostgreSQL expert instruction prompt supplying schema metadata,
+     * semantic value filter hints, query rules, and layout constraints to the SQL generator.
+     *
+     * @param question user query
+     * @param responseType layout format representation
+     * @param viewName target view name
+     * @param schemaContext pretty schema JSON context
+     * @param semanticHints ranked categorical filter values
+     * @return complete prompt string
+     */
     private String buildPrompt(
             String question,
             String responseType,
@@ -141,6 +152,14 @@ public class SqlConverterServiceImpl implements SqlConverterService {
     // Response parser
     // -------------------------------------------------------------------------
 
+    /**
+     * Parses the LLM string response content, mapping it to a structured SqlGenerationResult.
+     * Handles clarification requests.
+     *
+     * @param content raw string content from LLM
+     * @param responseType requested formatting format
+     * @return constructed SqlGenerationResult
+     */
     private SqlGenerationResult parseResponse(String content, String responseType) {
         try {
             @SuppressWarnings("unchecked")
@@ -181,6 +200,12 @@ public class SqlConverterServiceImpl implements SqlConverterService {
         }
     }
 
+    /**
+     * Parses and formats selected columns metadata returned by SQL prompt generator, ensuring fallback human labels exist.
+     *
+     * @param raw raw JSON object
+     * @return formatted metadata list representing selected columns
+     */
     @SuppressWarnings("unchecked")
     private List<Map<String, String>> parseSelectedColumns(Object raw) {
         if (raw == null) {
@@ -200,6 +225,12 @@ public class SqlConverterServiceImpl implements SqlConverterService {
         }
     }
 
+    /**
+     * Sanitizes snake_case database column names into clean Human Readable Labels.
+     *
+     * @param label database name
+     * @return capitalized human readable label
+     */
     private String sanitizeColumnLabel(String label) {
         if (label == null || label.isBlank()) return "";
         if (label.contains(" ") || (!label.equals(label.toLowerCase()) && !label.equals(label.toUpperCase()))) {
@@ -219,6 +250,12 @@ public class SqlConverterServiceImpl implements SqlConverterService {
         return sb.toString().trim();
     }
 
+    /**
+     * Formats schema maps safely into structured JSON strings.
+     *
+     * @param schemaJson database view column schema
+     * @return string metadata structure
+     */
     private String buildSchemaContext(Map<String, Object> schemaJson) {
         try {
             return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(schemaJson);

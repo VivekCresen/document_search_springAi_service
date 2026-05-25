@@ -40,7 +40,8 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
     private static final List<String> SEARCH_FIELDS = List.of(
             Common.SEARCH_FIELD_EXAMPLE_QUERIES,
             Common.SEARCH_FIELD_TOPICS,
-            Common.SEARCH_FIELD_INTENT_SIGNALS
+            Common.SEARCH_FIELD_INTENT_SIGNALS,
+            Common.SEARCH_FIELD_CONTENT
     );
     private static final List<String> SELECT_FIELDS = List.of(
             Common.SEARCH_FIELD_SOURCE,
@@ -64,6 +65,9 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
     private final Map<String, ChatClient> chatClients;
     private RestClient restClient;
 
+    /**
+     * Initializes the underlying RestClient client.
+     */
     @PostConstruct
     public void initialize() {
         this.restClient = restClientBuilder.build();
@@ -129,6 +133,14 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
         return baseClassification("document", null, 0.3, "No LLM configuration available", documents);
     }
 
+    /**
+     * Builds the query request payload payload for Azure AI Search engine.
+     *
+     * @param question user text query
+     * @param searchFilter OData security filter
+     * @param topK maximum candidate retrieval limit
+     * @return search request payload map
+     */
     private Map<String, Object> buildSearchRequest(String question, String searchFilter, int topK) {
         Map<String, Object> request = new java.util.LinkedHashMap<>();
         request.put("search", question);
@@ -141,6 +153,12 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
         return request;
     }
 
+    /**
+     * Converts a raw map record from Azure Search hits into a structured SearchResultDocument.
+     *
+     * @param result raw search match hit map
+     * @return SearchResultDocument structure representation
+     */
     private SearchResultDocument toSearchResultDocument(Map<?, ?> result) {
         String filepath = CommonUtils.stringValue(result.get(Common.SEARCH_FIELD_FILEPATH));
         String blobUri = CommonUtils.stringValue(result.containsKey(Common.SEARCH_FIELD_BLOB_URI)
@@ -164,6 +182,12 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
                 .build();
     }
 
+    /**
+     * Extracts and converts the unstructured page layout metadata JSON into structured PageSpan list definitions.
+     *
+     * @param metadata raw metadata block
+     * @return page span list
+     */
     private List<DiPageSpan> extractDiPageSpans(Object metadata) {
         if (metadata == null) {
             return Collections.emptyList();
@@ -191,6 +215,14 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
         }
     }
 
+    /**
+     * Constructs the structural classification instruction prompt context.
+     *
+     * @param question user query question
+     * @param username query requester name
+     * @param documents metadata search documents pre-fetched
+     * @return prompt text instruction
+     */
     private String buildClassificationPrompt(String question, String username, List<SearchResultDocument> documents) {
         return """
                 Analyze the user's question and classify it.
@@ -219,6 +251,13 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
                 """.formatted(username, question, documents.size());
     }
 
+    /**
+     * Parses the intent classification JSON response payload from LLM into IntentClassification.
+     *
+     * @param rawContent raw JSON content from LLM
+     * @param documents pre-fetched documents
+     * @return parsed IntentClassification object
+     */
     private IntentClassification parseClassification(String rawContent, List<SearchResultDocument> documents) {
         try {
             IntentClassification parsed = CommonUtils.parseLlmJson(rawContent, IntentClassification.class, objectMapper);
@@ -236,6 +275,16 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
         }
     }
 
+    /**
+     * Constructs a default baseline IntentClassification on error or fallback triggers.
+     *
+     * @param intent fallback intent classification
+     * @param responseType fallback database layout format
+     * @param confidence numeric probability
+     * @param reasoning text reasoning block
+     * @param documents baseline documents list
+     * @return built IntentClassification record
+     */
     private IntentClassification baseClassification(
             String intent,
             String responseType,
@@ -252,6 +301,12 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
                 .build();
     }
 
+    /**
+     * Resolves if the user question is a standard polite greeting.
+     *
+     * @param text raw question text
+     * @return true if matches common greetings
+     */
     private boolean isGreeting(String text) {
         if (text == null) {
             return false;
@@ -261,12 +316,22 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
                 .contains(normalized);
     }
 
+    /**
+     * Validates that all required Azure Cognitive Search endpoint configs are defined.
+     *
+     * @return true if valid search properties exist
+     */
     private boolean hasAzureSearchConfig() {
         return CommonUtils.hasText(azureSearchProperty.getEndpoint())
                 && CommonUtils.hasText(azureSearchProperty.getApiKey())
                 && CommonUtils.hasText(azureSearchProperty.getIndexName());
     }
 
+    /**
+     * Dynamically compiles the Azure search query endpoint URL string.
+     *
+     * @return search endpoint url
+     */
     private String buildSearchUrl() {
         return CommonUtils.buildAzureSearchUrl(
                 azureSearchProperty.getEndpoint(),
@@ -275,6 +340,12 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
         );
     }
 
+    /**
+     * Sanitizes and normalizes the intent category value.
+     *
+     * @param intent raw intent category
+     * @return normalized intent category
+     */
     private String normalizeIntent(String intent) {
         String value = intent == null ? Common.EMPTY : intent.toLowerCase(Locale.ROOT).trim();
         if (Common.VALID_INTENTS.contains(value)) {
@@ -283,6 +354,12 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
         return Common.INTENT_DOCUMENT;
     }
 
+    /**
+     * Sanitizes and normalizes the response database presentation layout.
+     *
+     * @param responseType raw layout representation
+     * @return normalized presentation layout
+     */
     private String normalizeResponseType(String responseType) {
         String value = responseType == null ? Common.EMPTY : responseType.toLowerCase(Locale.ROOT).trim();
         if (Common.VALID_DATABASE_RESPONSE_TYPES.contains(value)) {

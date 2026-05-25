@@ -179,6 +179,13 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
     /**
      * Filters search results based on user's restricted folders and file stability state.
      */
+    /**
+     * Filters search results based on user's restricted folders and file stability state.
+     *
+     * @param username target username
+     * @param docs raw metadata search results candidate list
+     * @return filtered metadata search results list
+     */
     private List<SearchResultDocument> filterSearchResults(String username, List<SearchResultDocument> docs) {
         if (docs == null || docs.isEmpty()) {
             return Collections.emptyList();
@@ -210,6 +217,9 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
 
     /**
      * Maps DTO results to RAG-friendly source documents, carrying over metadata like diPageSpans.
+     *
+     * @param prefetchedDocs pre-fetched search matches list
+     * @return list of mapped RagSourceDocument structures
      */
     private List<RagSourceDocument> getSourceDocuments(List<SearchResultDocument> prefetchedDocs) {
         return prefetchedDocs.stream()
@@ -227,6 +237,9 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
 
     /**
      * Builds the string context for the LLM prompt, truncating documents to stay within token limits.
+     *
+     * @param sourceDocuments candidate source documents list
+     * @return single formatted context string block
      */
     private String buildContext(List<RagSourceDocument> sourceDocuments) {
         int maxContextChars = Math.max(4000, workflowProperty.getRagMaxContextChars());
@@ -247,6 +260,12 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
         return context.toString();
     }
 
+    /**
+     * Invokes the RAG prompt on the configured ChatClient, returning the raw JSON string response.
+     *
+     * @param prompt generated prompt text
+     * @return raw response content
+     */
     private String invokeLlm(String prompt) {
         ChatClient chatClient = chatClients.get(ChatClientConfig.SECURED_RAG_CHAT_CLIENT);
         if (chatClient != null) {
@@ -265,6 +284,12 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
         return Common.NO_LLM_CONFIGURED_JSON;
     }
 
+    /**
+     * Safely parses LLM JSON string response blocks into structured RagLlmResponse DTOs.
+     *
+     * @param rawResponse raw string block
+     * @return constructed RagLlmResponse
+     */
     private RagLlmResponse parseLlmResponse(String rawResponse) {
         try {
             return CommonUtils.parseLlmJson(rawResponse, RagLlmResponse.class, objectMapper);
@@ -276,6 +301,13 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
         }
     }
 
+    /**
+     * Validates that LLM extractions physically map to existing portions of source text context.
+     *
+     * @param rawExtractions raw extractions claimed by LLM
+     * @param sourceDocuments search candidate documents list
+     * @return list of validated extractions
+     */
     private List<ValidatedExtraction> validateExtractions(
             List<LlmExtraction> rawExtractions,
             List<RagSourceDocument> sourceDocuments
@@ -293,6 +325,13 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
                 .toList();
     }
 
+    /**
+     * Performs fuzzy text comparison matching on a specific extraction.
+     *
+     * @param extraction targeting extraction candidate
+     * @param docsBySource maps matching filename keys to document structures
+     * @return validated extraction option wrapper
+     */
     private Optional<ValidatedExtraction> validateExtraction(
             LlmExtraction extraction,
             Map<String, List<RagSourceDocument>> docsBySource
@@ -314,6 +353,13 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
                 ));
     }
 
+    /**
+     * Performs normalized whitespace and token overlap searches to verify passage containment.
+     *
+     * @param needle extraction string fragment to find
+     * @param haystack source document text
+     * @return true if successfully matched
+     */
     private boolean textExistsInDocument(String needle, String haystack) {
         if (!CommonUtils.hasText(needle) || !CommonUtils.hasText(haystack)) {
             return false;
@@ -329,6 +375,12 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
         return normalizedNeedle.length() > 30 && CommonUtils.tokenOverlapRatio(normalizedNeedle, normalizedHaystack) >= 0.90;
     }
 
+    /**
+     * Combines multiple extracted passages belonging to the same source PDF to minimize highlights footprint.
+     *
+     * @param validatedExtractions list of validated extractions
+     * @return list of consolidated SupportingPassages
+     */
     private List<SupportingPassage> consolidateByPdf(List<ValidatedExtraction> validatedExtractions) {
         Map<String, List<ValidatedExtraction>> byPdf = validatedExtractions.stream()
                 .collect(Collectors.groupingBy(ValidatedExtraction::source, LinkedHashMap::new, Collectors.toList()));
@@ -363,6 +415,12 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
         return consolidated;
     }
 
+    /**
+     * Resolves unique DiPageSpan blocks from multiple candidate extractions.
+     *
+     * @param extractions validated extractions list
+     * @return union of page spans
+     */
     private List<DiPageSpan> unionDiPageSpans(List<ValidatedExtraction> extractions) {
         Set<String> seen = new LinkedHashSet<>();
         List<DiPageSpan> union = new ArrayList<>();
@@ -380,6 +438,13 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
         return union;
     }
 
+    /**
+     * Truncates source text to comply with maximum character boundaries.
+     *
+     * @param value source content string
+     * @param maxChars maximum threshold
+     * @return truncated text
+     */
     private String truncate(String value, int maxChars) {
         if (value == null || value.length() <= maxChars) {
             return value;
@@ -387,6 +452,13 @@ public class SecuredRagPipelineImpl implements SecuredRagPipeline {
         return value.substring(0, maxChars).trim() + "\n[truncated]";
     }
 
+    /**
+     * Standard block resolver for asynchronous security filter futures.
+     *
+     * @param future target security future
+     * @param label tracking logs label representation
+     * @return set of resolved filter items
+     */
     private Set<String> joinSet(CompletableFuture<Set<String>> future, String label) {
         try {
             return future.join();

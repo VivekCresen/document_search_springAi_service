@@ -44,6 +44,10 @@ public class SchemaRegistryServiceImpl implements SchemaRegistryService {
     private volatile Map<String, String> viewDescriptions = Collections.emptyMap();
     private volatile Map<String, Map<String, Object>> viewRoutingMetadata = Collections.emptyMap();
 
+    /**
+     * Post-construct hook that eagerly pulls the initial set of active views from the database
+     * at application startup.
+     */
     @PostConstruct
     public void init() {
         try {
@@ -107,6 +111,11 @@ public class SchemaRegistryServiceImpl implements SchemaRegistryService {
         log.info("Schema registry refreshed: {} view(s)", newViews.size());
     }
 
+    /**
+     * Thread-safe read access to the list of active DB View registry records.
+     *
+     * @return unmodifiable list of ViewRegistryEntry records
+     */
     @Override
     public List<ViewRegistryEntry> getActiveViews() {
         lock.readLock().lock();
@@ -117,6 +126,11 @@ public class SchemaRegistryServiceImpl implements SchemaRegistryService {
         }
     }
 
+    /**
+     * Thread-safe read access to in-memory description mappings for views.
+     *
+     * @return unmodifiable map matching view name keys to text description values
+     */
     @Override
     public Map<String, String> getViewDescriptions() {
         lock.readLock().lock();
@@ -127,6 +141,11 @@ public class SchemaRegistryServiceImpl implements SchemaRegistryService {
         }
     }
 
+    /**
+     * Thread-safe read access to the routing confidence and parsing rules mapped by view.
+     *
+     * @return unmodifiable nested map of routing rules
+     */
     @Override
     public Map<String, Map<String, Object>> getViewRoutingMetadata() {
         lock.readLock().lock();
@@ -137,6 +156,12 @@ public class SchemaRegistryServiceImpl implements SchemaRegistryService {
         }
     }
 
+    /**
+     * Safe cast helper to convert unstructured config payloads into list of strings.
+     *
+     * @param value raw config property
+     * @return list of casted string values, or an empty list on failure
+     */
     @SuppressWarnings("unchecked")
     private List<String> castStringList(Object value) {
         if (value instanceof List<?> list) {

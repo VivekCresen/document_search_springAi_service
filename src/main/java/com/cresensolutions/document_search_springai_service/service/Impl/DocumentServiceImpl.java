@@ -79,6 +79,11 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
     // Lifecycle
     // -------------------------------------------------------------------------
 
+    /**
+     * Post-construct initialization to establish or verify the presence of the default
+     * Azure Storage Blob container specified in configuration.
+     * Swallows runtime connection errors on startup to enable offline initialization.
+     */
     @PostConstruct
     public void init() {
         containerClient = getBlobContainerClient(cloudProperty.getContainerName());
@@ -115,6 +120,16 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
         return uploadAndSaveFile(fileInfo, input, status, loggedInUser);
     }
 
+    /**
+     * Uploads a single document file to storage and saves metadata with default uploaded status.
+     * Evicts file-related caches.
+     *
+     * @param fileInfo hierarchical FilePath segments
+     * @param input MultipartFile payload containing the file stream and size
+     * @param loggedInUser username of the uploader
+     * @return true if successful
+     * @throws IOException on connection or stream failure
+     */
     @Override
     @Transactional
     @CacheEvict(value = {"fileMetadata", "blobNames", "stableFiles"}, allEntries = true)
@@ -122,6 +137,16 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
         return uploadAndSaveFile(fileInfo, input, Common.FILE_STATUS_UPLOADED, loggedInUser);
     }
 
+    /**
+     * Performs a batch upload of multiple documents, matching lists of FilePaths and files.
+     * Collects success status flags individually.
+     *
+     * @param fileInfos list of FilePath structures for each file
+     * @param files array of MultipartFile objects matching the fileInfos
+     * @param loggedInUser username of the uploader
+     * @return list of boolean status indicators for each file's upload result
+     * @throws IOException on validation error or general stream failures
+     */
     @Override
     @Transactional
     @CacheEvict(value = {"fileMetadata", "blobNames", "stableFiles"}, allEntries = true)
@@ -162,6 +187,12 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
         return downloadByBlobName(blobName);
     }
 
+    /**
+     * Downloads a file and structures it into a DownloadedFile by its full physical string path.
+     *
+     * @param path full slash-separated path string in storage
+     * @return DownloadedFile containing filename, headers, and content bytes
+     */
     @Override
     public DownloadedFile getDownloadedFileByPath(String path) {
         FilePath filePath = FilePath.of(splitBlobPath(path));
@@ -202,6 +233,13 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
         return downloadByBlobName(blobName);
     }
 
+    /**
+     * Downloads a file and maps it into a structured DownloadedFile container using hierarchical FilePath info.
+     *
+     * @param fileInfo structural FilePath identifying the document
+     * @return DownloadedFile metadata and byte payload
+     * @throws IOException on database metadata miss or stream errors
+     */
     @Override
     public DownloadedFile getDownloadedFile(FilePath fileInfo) throws IOException {
         FilePath filePath = normalizeFilePath(fileInfo);
@@ -228,6 +266,12 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
         return downloadByBlobName(blobName);
     }
 
+    /**
+     * Downloads a file payload by its unique document UUID, packaging it as a DownloadedFile response.
+     *
+     * @param documentId the document's unique UUID string
+     * @return DownloadedFile descriptor and content bytes
+     */
     @Override
     public DownloadedFile getDownloadedFileByDocumentId(String documentId) {
         ByteArrayOutputStream output = downloadFileByDocumentId(documentId);
@@ -642,6 +686,14 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
 
             log.info("Updated the file record in metadata table");
 
+            // Dynamically register and sync uploaded folder path segments inside PostgreSQL documents hierarchy tree
+            try {
+                syncdemoDocuments(filePath.getFilePath());
+                log.info("Successfully synchronized documents folder tree segments in DB: {}", filePath.getFilePath());
+            } catch (Exception e) {
+                log.error("Failed to dynamically synchronize documents folder tree segments in DB: {}", filePath.getFilePath(), e);
+            }
+
             // Notify the Azure Indexing Service to immediately queue this blob for indexing.
             // This call is non-blocking: any failure is swallowed inside the callback service.
             String callbackFileName = filePath.getFileName();
@@ -708,7 +760,10 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
     }
 
     /**
-     * Parses a status string into a FileStatus enum, defaulting to UPLOADED if invalid.
+     * Parses a status string into a FileStatus enum, defaulting to UPLOADED if invalid or blank.
+     *
+     * @param status the raw string status
+     * @return the parsed FileMetadata.FileStatus enum
      */
     private FileMetadata.FileStatus parseStatus(String status) {
         if (status == null || status.isBlank()) {
@@ -732,10 +787,22 @@ public class DocumentServiceImpl implements com.cresensolutions.document_search_
         return bytes / (1024.0 * 1024.0);
     }
 
+    /**
+     * Obtains the Azure BlobContainerClient for the specified container name.
+     *
+     * @param azureContainerName the storage container name
+     * @return the BlobContainerClient instance
+     */
     private BlobContainerClient getBlobContainerClient(String azureContainerName) {
         return blobServiceClient.getBlobContainerClient(azureContainerName);
     }
 
+    /**
+     * Resolves the Azure BlobClient corresponding to a specific document ID.
+     *
+     * @param documentId the document's unique UUID string
+     * @return the BlobClient matching the document
+     */
     private BlobClient getBlobClientByDocumentId(String documentId) {
         return getBlobContainerClient(cloudProperty.getContainerName())
                 .getBlobClient(getBlobNameByDocumentId(documentId));

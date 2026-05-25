@@ -18,6 +18,10 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Implementation of CostTrackerService that records and accumulates LLM API token consumption costs.
+ * Stores transactional records in a shared CSV log file for auditing and operational tracking.
+ */
 @Service
 @Slf4j
 public class CostTrackerServiceImpl implements CostTrackerService {
@@ -35,6 +39,12 @@ public class CostTrackerServiceImpl implements CostTrackerService {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern(Common.ISO_DATE_PATTERN);
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern(Common.ISO_TIME_PATTERN);
 
+    /**
+     * Post-construct initialization hook.
+     * Checks if the cost tracking CSV log file exists. If it does not, creates the directory path
+     * and initializes the file with standard column headers. If it does exist, pre-loads the cumulative
+     * cost total from the last written entry.
+     */
     @PostConstruct
     public void init() {
         File file = new File(csvPath);
@@ -55,6 +65,10 @@ public class CostTrackerServiceImpl implements CostTrackerService {
         }
     }
 
+    /**
+     * Reads the last line of the CSV log file to initialize the thread-safe cumulative cost total.
+     * Falls back to starting at 0.0 if the file cannot be read, parsed, or is empty.
+     */
     private void loadCurrentTotal() {
         try {
             java.util.List<String> lines = Files.readAllLines(Paths.get(csvPath));
@@ -71,6 +85,15 @@ public class CostTrackerServiceImpl implements CostTrackerService {
         }
     }
 
+    /**
+     * Computes the transactional cost based on input/output tokens and appends the structured metrics
+     * to the CSV log. This operation is thread-safe and synchronized.
+     *
+     * @param operationType name or intent label of the LLM pipeline step
+     * @param inputTokens number of prompt/input tokens processed
+     * @param outputTokens number of completion/output tokens generated
+     * @param reasoningTokens number of reasoning tokens consumed during model thinking, if applicable
+     */
     @Override
     public synchronized void logUsage(String operationType, int inputTokens, int outputTokens, int reasoningTokens) {
         double inputCost = (inputTokens / 1_000_000.0) * inputCostPerMillion;
@@ -97,6 +120,11 @@ public class CostTrackerServiceImpl implements CostTrackerService {
         }
     }
 
+    /**
+     * Retrieves the current accumulated cumulative cost since the tracker started or was last reset.
+     *
+     * @return the total calculated API cost in base currency units
+     */
     @Override
     public double getCumulativeTotal() {
         return currentTotal.get();

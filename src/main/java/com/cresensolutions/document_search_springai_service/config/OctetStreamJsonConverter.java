@@ -23,26 +23,54 @@ public class OctetStreamJsonConverter extends AbstractHttpMessageConverter<Objec
 
     private final ObjectMapper objectMapper;
 
+    /**
+     * Constructs the message converter with standard APPLICATION_OCTET_STREAM media type registry.
+     *
+     * @param objectMapper injected ObjectMapper client
+     */
     public OctetStreamJsonConverter(ObjectMapper objectMapper) {
         super(MediaType.APPLICATION_OCTET_STREAM);
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Resolves if the target class is supported by this converter.
+     *
+     * @param clazz class definition to check
+     * @return true if matches FilePath
+     */
     @Override
     protected boolean supports(Class<?> clazz) {
         // Only apply this converter to the FilePath class
         return clazz == FilePath.class;
     }
 
+    /**
+     * Deserializes binary stream content from input message into the target FilePath object model.
+     *
+     * @param clazz target class to parse
+     * @param inputMessage HTTP input stream container
+     * @return deserialized object instance
+     * @throws IOException on input serialization errors
+     * @throws HttpMessageNotReadableException on malformed input
+     */
     @Override
     protected Object readInternal(Class<? extends Object> clazz, HttpInputMessage inputMessage)
-            throws IOException, HttpMessageNotReadableException {
+             throws IOException, HttpMessageNotReadableException {
         return objectMapper.readValue(inputMessage.getBody(), clazz);
     }
 
+    /**
+     * Throws an exception as response serialization writing operations are unsupported.
+     *
+     * @param o object target
+     * @param outputMessage output target container
+     * @throws IOException on write errors
+     * @throws HttpMessageNotWritableException on conversion errors
+     */
     @Override
     protected void writeInternal(Object o, HttpOutputMessage outputMessage)
-            throws IOException, HttpMessageNotWritableException {
+             throws IOException, HttpMessageNotWritableException {
         // Not used for writing
         throw new UnsupportedOperationException("Writing is not supported by OctetStreamJsonConverter");
     }

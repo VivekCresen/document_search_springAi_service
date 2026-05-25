@@ -42,6 +42,14 @@ public class UserAccessServiceImpl implements UserAccessService {
     private final demoDocumentRepository demoDocumentRepository;
     private final com.cresensolutions.document_search_springai_service.repository.UserRepository userRepository;
 
+    /**
+     * Resolves the current user's identification string from username or email fallback options.
+     *
+     * @param username raw username
+     * @param email raw email
+     * @return the resolved identifier
+     * @throws ResponseStatusException 401 if both are empty
+     */
     @Override
     public String resolveCurrentUser(String username, String email) {
         if (username != null && !username.isBlank()) {
@@ -53,6 +61,13 @@ public class UserAccessServiceImpl implements UserAccessService {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, Common.AUTHENTICATION_REQUIRED_MESSAGE);
     }
 
+    /**
+     * Batch evaluates read permission checks against a list of folders.
+     *
+     * @param username targeting user
+     * @param request folder IDs list container
+     * @return PermissionCheckResponse detailing layout status
+     */
     @Override
     public PermissionCheckResponse checkPermissions(String username, PermissionCheckRequest request) {
         List<String> folderIds = request == null || request.getFolderIds() == null ? List.of() : request.getFolderIds();
@@ -72,6 +87,12 @@ public class UserAccessServiceImpl implements UserAccessService {
                 .build();
     }
 
+    /**
+     * Retrieves folder restriction profiles and counts for the authenticated user.
+     *
+     * @param username authenticated user name
+     * @return Map of access info
+     */
     @Override
     public Map<String, Object> getMyAccess(String username) {
         List<String> restrictedFolders = getRestrictedFolders(username).stream()
@@ -86,6 +107,12 @@ public class UserAccessServiceImpl implements UserAccessService {
         );
     }
 
+    /**
+     * Evicts permission cache records for a target user.
+     *
+     * @param username target username
+     * @return status Map indicator
+     */
     @Override
     public Map<String, Object> clearPermissionCache(String username) {
         clearUserRestrictionsCache(username);
@@ -96,6 +123,12 @@ public class UserAccessServiceImpl implements UserAccessService {
         );
     }
 
+    /**
+     * Fetches folders mapped as restricted for a specific user, using key-based caching.
+     *
+     * @param username target user name
+     * @return list of restricted folder ID strings
+     */
     @Override
     @Cacheable(value = "userRestrictions", key = "#username")
     public List<String> getRestrictedFolders(String username) {
@@ -113,30 +146,61 @@ public class UserAccessServiceImpl implements UserAccessService {
                 .toList();
     }
 
+    /**
+     * Resolves if a user has access rights to a specific folder.
+     *
+     * @param username target user name
+     * @param folderId folder to check
+     * @return true if accessible
+     */
     @Override
     public boolean hasAccessToFolder(String username, String folderId) {
         List<String> restrictedFolders = getRestrictedFolders(username);
         return !restrictedFolders.contains(folderId);
     }
 
+    /**
+     * Resolves if a user has access rights to at least one folder in a candidate set.
+     *
+     * @param username target user name
+     * @param folderIds candidate set of folder IDs
+     * @return true if at least one is accessible
+     */
     @Override
     public boolean hasAccessToAnyFolder(String username, Set<String> folderIds) {
         List<String> restrictedFolders = getRestrictedFolders(username);
         return folderIds.stream().anyMatch(folderId -> !restrictedFolders.contains(folderId));
     }
 
+    /**
+     * Retrieves all stable files located in folders accessible to the target user.
+     *
+     * @param username target user name
+     * @return list of stable FileInIndex records
+     */
     @Override
     public List<FileInIndex> getAccessibleStableFiles(String username) {
         List<String> restrictedFolders = getRestrictedFolders(username);
         return documentService.getAccessibleStableFiles(restrictedFolders);
     }
 
+    /**
+     * Caches and lists all physical storage file URIs currently marked unstable in index tables.
+     *
+     * @return list of unstable storage URIs
+     */
     @Override
     @Cacheable(value = "unstableUris")
     public List<String> getUnstableFileUris() {
         return fileInIndexRepository.findUnstableBlobUris();
     }
 
+    /**
+     * Compiles an OData compliance query filter string excluding restricted folders and unstable index paths.
+     *
+     * @param username target user name
+     * @return escaped search filter query
+     */
     @Override
     public String createSearchFilter(String username) {
         List<String> restrictedFolders = getRestrictedFolders(username);
@@ -155,6 +219,13 @@ public class UserAccessServiceImpl implements UserAccessService {
         return String.join(" and ", filterParts);
     }
 
+    /**
+     * Post-filters list of search results maps, removing unauthorized folder IDs or unstable blob paths.
+     *
+     * @param username target user name
+     * @param searchResults raw records list
+     * @return filtered records list
+     */
     @Override
     public List<Map<String, Object>> filterSearchResults(String username, List<Map<String, Object>> searchResults) {
         if (searchResults == null || searchResults.isEmpty()) {
@@ -179,6 +250,13 @@ public class UserAccessServiceImpl implements UserAccessService {
                 .toList();
     }
 
+    /**
+     * Filters down a folder ID candidate list, returning only folder IDs accessible to the target user.
+     *
+     * @param username target user name
+     * @param folderIds candidate list
+     * @return filtered list of accessible folder IDs
+     */
     @Override
     public List<String> filterAccessibleFolders(String username, List<String> folderIds) {
         List<String> restrictedFolders = getRestrictedFolders(username);
@@ -187,11 +265,23 @@ public class UserAccessServiceImpl implements UserAccessService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Resolves aggregate counts of accessible folders for a target user name.
+     *
+     * @param username target user name
+     * @return count of folders accessible
+     */
     @Override
     public long countAccessibleFolders(String username) {
         return Math.max(0, demoDocumentRepository.countFolders() - getRestrictedFolders(username).size());
     }
 
+    /**
+     * Inserts fresh folder restrictions mapped to a user, replacing any existing restriction sets.
+     *
+     * @param username target user name
+     * @param restrictedFolders folder ID mappings array to restrict
+     */
     @Override
     @Transactional
     @CacheEvict(value = "userRestrictions", key = "#username")
@@ -222,6 +312,11 @@ public class UserAccessServiceImpl implements UserAccessService {
         log.info("Updated folder restrictions for user {}", username);
     }
 
+    /**
+     * Clears folder restriction definitions associated with a specific user.
+     *
+     * @param username target user name
+     */
     @Override
     @Transactional
     @CacheEvict(value = "userRestrictions", key = "#username")
@@ -233,18 +328,32 @@ public class UserAccessServiceImpl implements UserAccessService {
         log.info("Removed all folder restrictions for user {}", username);
     }
 
+    /**
+     * System-wide eviction hook for all user restriction caches.
+     */
     @Override
     @CacheEvict(value = "userRestrictions", allEntries = true)
     public void clearAllUserRestrictionsCache() {
         log.info("Cleared all user restrictions cache");
     }
 
+    /**
+     * Evicts user restrictions cache records for a target user name.
+     *
+     * @param username target user name
+     */
     @Override
     @CacheEvict(value = "userRestrictions", key = "#username")
     public void clearUserRestrictionsCache(String username) {
         log.info("Cleared restrictions cache for user {}", username);
     }
 
+    /**
+     * Escapes standard single quote literals to comply with OData string syntax rules.
+     *
+     * @param value raw OData query component
+     * @return double single-quoted escaped query string
+     */
     private String escapeODataValue(String value) {
         // OData represents a literal single quote as two single quotes.
         return value == null ? "" : value.replace("'", "''");

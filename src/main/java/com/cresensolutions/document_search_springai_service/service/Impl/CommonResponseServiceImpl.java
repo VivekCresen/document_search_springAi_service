@@ -13,12 +13,21 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
+/**
+ * Implementation of CommonResponseService that acts as a fast-path responder for static questions.
+ * Handles common greeting, identity, timing/date, and conversational closure queries entirely in memory,
+ * bypassing LLM classification and processing loops.
+ */
 @Service
 @Slf4j
 public class CommonResponseServiceImpl implements CommonResponseService {
 
     private final Map<String, Supplier<String>> staticResponses = new HashMap<>();
 
+    /**
+     * Initializes the static response directory with pre-canned responses for greetings,
+     * identity queries, current date/time suppliers, and polite closing remarks.
+     */
     public CommonResponseServiceImpl() {
         // Greetings
         staticResponses.put("hi", () -> "Hello! How can I help you today?");
@@ -48,6 +57,13 @@ public class CommonResponseServiceImpl implements CommonResponseService {
         staticResponses.put("exit", () -> "Goodbye! Feel free to return if you have more questions.");
     }
 
+    /**
+     * Attempts to find a canned in-memory response for the given question.
+     * Performs standard text normalization (lowercasing, punctuation stripping) to match queries.
+     *
+     * @param question the user's raw input question
+     * @return an Optional containing the canned answer string if matched, or Optional.empty() otherwise
+     */
     @Override
     public Optional<String> getCommonResponse(String question) {
         if (question == null || question.isBlank()) {

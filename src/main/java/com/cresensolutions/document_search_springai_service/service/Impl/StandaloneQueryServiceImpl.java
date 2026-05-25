@@ -39,6 +39,14 @@ public class StandaloneQueryServiceImpl implements StandaloneQueryService {
 
     private final Map<String, ChatClient> chatClients;
 
+    /**
+     * Resolves context-aware user replies by reformulating follow-up replies into clean, self-contained questions.
+     * Incorporates previous conversation contexts in prompt generation.
+     *
+     * @param currentQuestion latest raw reply
+     * @param conversationContext recent conversation context log snippet
+     * @return clean self-contained query question
+     */
     public String createStandaloneQuery(String currentQuestion, String conversationContext) {
         if (currentQuestion == null || currentQuestion.isBlank()) {
             return "";
@@ -52,6 +60,14 @@ public class StandaloneQueryServiceImpl implements StandaloneQueryService {
         return currentQuestion;
     }
 
+    /**
+     * Dispatches the standalone query prompt creation requests to Spring AI chat clients.
+     *
+     * @param chatClient the configured Standalone Query LLM client
+     * @param prompt structured user prompt containing context logs
+     * @param fallback original question to use on timeout or error
+     * @return generated self-contained question string
+     */
     private String createWithSpringAi(ChatClient chatClient, String prompt, String fallback) {
         try {
             String content = chatClient.prompt()
@@ -65,6 +81,13 @@ public class StandaloneQueryServiceImpl implements StandaloneQueryService {
         }
     }
 
+    /**
+     * Parses the raw LLM standalone response, stripping structural prefix labels such as "REFORMULATED QUESTION:".
+     *
+     * @param content raw text returned by LLM
+     * @param fallback fallback query string
+     * @return sanitized query text
+     */
     private String cleanStandaloneResponse(String content, String fallback) {
         String text = content == null ? "" : content.trim();
         if (text.isBlank()) {

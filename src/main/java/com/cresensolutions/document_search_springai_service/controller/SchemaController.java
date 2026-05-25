@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+/**
+ * REST Controller for interacting with registered schemas and database views.
+ */
 @RestController
 @RequestMapping("/api/v1/schema")
 @RequiredArgsConstructor
@@ -19,6 +22,11 @@ public class SchemaController {
 
     private final SchemaRegistryService schemaRegistryService;
 
+    /**
+     * Resolves currently active registered database view schemas and routing metadata.
+     *
+     * @return active view details map response
+     */
     @GetMapping("/active")
     public ResponseEntity<Map<String, Object>> getActiveSchemas() {
         return ResponseEntity.ok(Map.of(
@@ -28,6 +36,11 @@ public class SchemaController {
         ));
     }
 
+    /**
+     * Triggers manual schema definition updates and view caches reload from database catalogs.
+     *
+     * @return refresh outcome status map
+     */
     @PostMapping("/refresh")
     public ResponseEntity<Map<String, String>> refreshSchemas() {
         try {

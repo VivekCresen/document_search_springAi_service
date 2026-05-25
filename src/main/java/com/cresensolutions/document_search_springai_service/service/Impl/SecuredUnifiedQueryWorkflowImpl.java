@@ -144,12 +144,11 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
         result.put(Common.RESULT_USERNAME, username);
 
         // Phase 3: Route to the sub-pipeline based on the detected intent
-        // FALLBACK: If intent is "document" but no documents were found, treat as "general"
         String effectiveIntent = classification.getIntent();
-        if (Common.INTENT_DOCUMENT.equals(effectiveIntent) && 
-            (classification.getPrefetchedDocs() == null || classification.getPrefetchedDocs().isEmpty())) {
-            log.debug("No documents found for document intent; falling back to general knowledge.");
-            effectiveIntent = Common.INTENT_GENERAL;
+
+        // Treat any general intent question that is not a basic greeting as a document query to enforce search rules
+        if (Common.INTENT_GENERAL.equals(effectiveIntent) && !isGreeting(standaloneQuery)) {
+            effectiveIntent = Common.INTENT_DOCUMENT;
         }
 
         if (Common.INTENT_DOCUMENT.equals(effectiveIntent)) {
@@ -163,22 +162,14 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
                     userId
             );
 
-            // Secondary Fallback: If RAG explicitly says no documents found, try general knowledge
-            if (Common.NO_ACCESSIBLE_DOCUMENTS_RESPONSE.equals(documentAnswer.getAnswer())) {
-                log.debug("RAG pipeline returned no documents; attempting general knowledge fallback.");
-                String fallbackAnswer = generateGeneralAnswer(standaloneQuery);
-                result.put(Common.WORKFLOW, Common.WORKFLOW_GENERAL + "_fallback");
-                result.put(Common.RESULT_NLP_ANSWER, fallbackAnswer);
-                result.put(Common.RESULT_TEXT_PAYLOAD, fallbackAnswer);
-            } else {
-                result.put(Common.WORKFLOW, Common.WORKFLOW_DOCUMENT);
-                result.put(Common.RESULT_NLP_ANSWER, documentAnswer.getAnswer());
-                result.put(Common.RESULT_TEXT_PAYLOAD, documentAnswer.getAnswer());
-            }
+            // Strict Document-based RAG: never fall back to general knowledge if no documents match
+            result.put(Common.WORKFLOW, Common.WORKFLOW_DOCUMENT);
+            result.put(Common.RESULT_NLP_ANSWER, documentAnswer.getAnswer());
+            result.put(Common.RESULT_TEXT_PAYLOAD, documentAnswer.getAnswer());
             result.put(Common.RESULT_INTERNAL_TYPE, Common.TEXT_RESPONSE_TYPE);
             result.put(Common.RESULT_CITATIONS, documentAnswer.getCitations());
         } else if (Common.INTENT_GENERAL.equals(effectiveIntent)) {
-            // General Conversation Path
+            // General Greeting Conversation Path
             String answer = generateGeneralAnswer(standaloneQuery);
             result.put(Common.WORKFLOW, Common.WORKFLOW_GENERAL);
             result.put(Common.RESULT_INTERNAL_TYPE, Common.TEXT_RESPONSE_TYPE);
@@ -256,6 +247,13 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
         }
     }
 
+    /**
+     * Processes natural language SQL summary requests, falling back to tabular format if the dataset exceeds NLP threshold.
+     *
+     * @param question natural language user question
+     * @param sql target aggregate query SQL
+     * @param result output map accumulating results
+     */
     private void handleNlpSummary(String question, String sql, Map<String, Object> result) {
         result.put(Common.RESULT_INTERNAL_TYPE, Common.TEXT_RESPONSE_TYPE);
         SqlExecutionResult exec = sqlExecutorService.execute(sql);
@@ -286,6 +284,13 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
         result.put(Common.RESULT_SUCCESS, true);
     }
 
+    /**
+     * Executes queries expecting tabular datasets, returning a dynamic introduction and the raw records.
+     *
+     * @param question natural language user question
+     * @param sql target detail query SQL
+     * @param result output map accumulating results
+     */
     private void handleDetailedRecords(String question, String sql, Map<String, Object> result) {
         result.put(Common.RESULT_INTERNAL_TYPE, Common.TABLE_RESPONSE_TYPE);
         SqlExecutionResult exec = sqlExecutorService.execute(sql);
@@ -304,6 +309,13 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
         result.put(Common.RESULT_SUCCESS, true);
     }
 
+    /**
+     * Executes both summary and detail SQL queries to compile a hybrid textual summary accompanied by tabular dataset rows.
+     *
+     * @param question natural language user question
+     * @param sqlResult SQL results container
+     * @param result output map accumulating results
+     */
     private void handleHybrid(String question, SqlGenerationResult sqlResult, Map<String, Object> result) {
         result.put(Common.RESULT_INTERNAL_TYPE, Common.HYBRID_RESPONSE_TYPE);
 
@@ -362,6 +374,12 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
     // General conversation path
     // -------------------------------------------------------------------------
 
+    /**
+     * Resolves general chit-chat queries using the default general chat client.
+     *
+     * @param question conversational query
+     * @return conversational NLP text response
+     */
     private String generateGeneralAnswer(String question) {
         ChatClient chatClient = chatClients.get(ChatClientConfig.GENERAL_CHAT_CLIENT);
         if (chatClient == null) {
@@ -377,5 +395,20 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
             log.warn("Spring AI general response failed; using fallback response", e);
             return Common.GENERAL_GREETING_RESPONSE;
         }
+    }
+
+    /**
+     * Resolves if the user question is a standard polite greeting.
+     *
+     * @param text raw question text
+     * @return true if matches common greetings
+     */
+    private boolean isGreeting(String text) {
+        if (text == null) {
+            return false;
+        }
+        String normalized = text.toLowerCase(java.util.Locale.ROOT).trim();
+        return List.of("hello", "hi", "hey", "greetings", "good morning", "good afternoon", "good evening")
+                .contains(normalized);
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -56,6 +57,7 @@ public class IndexingCallbackService {
      * @param blobName Relative blob path inside the container (e.g. {@code folder/uuid/file.pdf})
      * @param fileName Human-readable file name (e.g. {@code file.pdf})
      */
+    @Async("taskExecutor")
     public void triggerIndexing(String blobUri, String blobName, String fileName) {
         if (!callbackEnabled) {
             log.debug("[IndexingCallback] Callback disabled — skipping trigger for {}", blobUri);

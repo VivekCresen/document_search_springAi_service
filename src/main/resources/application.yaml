@@ -81,6 +81,10 @@ spring:
     caffeine:
       spec: maximumSize=1000,expireAfterWrite=10m
 
+  mvc:
+    async:
+      request-timeout: 300000
+
 # Azure Storage Configuration
 azure:
   storage:
@@ -152,7 +156,7 @@ resilience4j:
   timelimiter:
     instances:
       documentService:
-        timeout-duration: 30s
+        timeout-duration: 300s
 
 # OpenAPI Documentation
 springdoc:

@@ -30,6 +30,9 @@ public class SemanticCacheManagerImpl implements SemanticCacheManager {
 
     private File cacheDir;
 
+    /**
+     * Post-construct initialization hook. Eagerly ensures the local cache filesystem directory exists.
+     */
     @PostConstruct
     public void init() {
         cacheDir = new File(cacheDirPath);
@@ -38,6 +41,13 @@ public class SemanticCacheManagerImpl implements SemanticCacheManager {
         }
     }
 
+    /**
+     * Retrieves cached embedding vector floats from disk if they exist and are not expired.
+     *
+     * @param viewName the database view name
+     * @param column the target column name
+     * @return the list of float vector embeddings, or null on cache miss / expiration
+     */
     @Override
     public List<float[]> getCachedEmbeddings(String viewName, String column) {
         File cacheFile = getCacheFile(viewName, column);
@@ -59,6 +69,13 @@ public class SemanticCacheManagerImpl implements SemanticCacheManager {
         }
     }
 
+    /**
+     * Caches categorical string list embedding vectors to disk under safe file names.
+     *
+     * @param viewName the database view name
+     * @param column the target column name
+     * @param embeddings list of embedded float vectors
+     */
     @Override
     public void setCachedEmbeddings(String viewName, String column, List<float[]> embeddings) {
         File cacheFile = getCacheFile(viewName, column);
@@ -74,6 +91,12 @@ public class SemanticCacheManagerImpl implements SemanticCacheManager {
         }
     }
 
+    /**
+     * Manually deletes cached embedding vector files for a given view and column.
+     *
+     * @param viewName the database view name
+     * @param column the target column name
+     */
     @Override
     public void invalidateCache(String viewName, String column) {
         File cacheFile = getCacheFile(viewName, column);
@@ -82,6 +105,13 @@ public class SemanticCacheManagerImpl implements SemanticCacheManager {
         }
     }
 
+    /**
+     * Resolves the safe File path reference corresponding to a view name and column key on disk.
+     *
+     * @param viewName the database view name
+     * @param column the target column name
+     * @return the local cache File handle reference
+     */
     private File getCacheFile(String viewName, String column) {
         // Sanitize file name
         String safeName = (viewName + "_" + column).replaceAll("[^a-zA-Z0-9_\\-]", "_") + ".json";

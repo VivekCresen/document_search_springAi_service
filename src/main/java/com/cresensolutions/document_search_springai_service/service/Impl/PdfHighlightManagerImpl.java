@@ -176,6 +176,17 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
         return hits;
     }
 
+    /**
+     * Strategy 2-4: Applies text searches across page lines to highlight matching passages.
+     * Uses fuzzy segment matches (sentence-based and window-based) if exact passages fail.
+     *
+     * @param document the target PDDocument
+     * @param textPassages the candidate text passages
+     * @param color the highlight color
+     * @param highlightedPages the set to collect pages successfully highlighted
+     * @return the total number of hits successfully matched and highlighted
+     * @throws IOException on PDF reading error
+     */
     private int applyTextFallbackHighlights(
             PDDocument document,
             List<String> textPassages,
@@ -214,6 +225,16 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
         return hits;
     }
 
+    /**
+     * Searches extracted lines for a specific snippet, applying highlight annotations when found.
+     *
+     * @param lines list of extracted PageLine records
+     * @param text the target search query snippet
+     * @param color the highlight color
+     * @param highlightedPages set to accumulate matching page numbers
+     * @return the number of matching lines highlighted
+     * @throws IOException on annotation rendering error
+     */
     private int highlightText(List<PageLine> lines, String text, Color color, Set<Integer> highlightedPages) throws IOException {
         String normalizedText = normalizeWhitespace(text).toLowerCase();
         int hits = 0;
@@ -228,6 +249,14 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
         return hits;
     }
 
+    /**
+     * Filters coordinate page spans to select only those matching the textual extraction list,
+     * ensuring only relevant sections of the document are highlighted.
+     *
+     * @param spans list of candidate page coordinate spans
+     * @param exactTexts list of text passages extracted
+     * @return filtered list of relevant DiPageSpans
+     */
     private List<DiPageSpan> matchSpansToExtractions(List<DiPageSpan> spans, List<String> exactTexts) {
         if (exactTexts == null || exactTexts.isEmpty()) {
             return spans;
@@ -255,6 +284,13 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
         return relevant.isEmpty() ? spans : relevant;
     }
 
+    /**
+     * Computes the fraction of common tokens shared between two text strings.
+     *
+     * @param left the first text string
+     * @param right the second text string
+     * @return the ratio of shared tokens between 0.0 and 1.0
+     */
     private double tokenOverlapRatio(String left, String right) {
         Set<String> leftTokens = tokens(left);
         if (leftTokens.isEmpty()) {
@@ -265,6 +301,12 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
         return (double) matches / leftTokens.size();
     }
 
+    /**
+     * Normalizes and extracts alphanumeric tokens longer than 2 characters from a string.
+     *
+     * @param value the raw text
+     * @return set of lowercase tokens
+     */
     private Set<String> tokens(String value) {
         Set<String> result = new LinkedHashSet<>();
         for (String token : value.toLowerCase().split("[^\\p{L}\\p{N}]+")) {
@@ -275,6 +317,13 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
         return result;
     }
 
+    /**
+     * Extracts lines of text paired with bounding boxes from the PDF document.
+     *
+     * @param document the target PDDocument
+     * @return list of structured PageLines
+     * @throws IOException on extraction failure
+     */
     private List<PageLine> extractPageLines(PDDocument document) throws IOException {
         List<PageLine> lines = new ArrayList<>();
         for (int pageIndex = 0; pageIndex < document.getNumberOfPages(); pageIndex++) {
@@ -287,6 +336,14 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
         return lines;
     }
 
+    /**
+     * Appends a highlighted text markup annotation to a PDF page.
+     *
+     * @param page the target PDPage
+     * @param rectangle bounding box of the line/text
+     * @param color highlight annotation color
+     * @throws IOException on PDF modification error
+     */
     private void addHighlight(PDPage page, PDRectangle rectangle, Color color) throws IOException {
         PDAnnotationTextMarkup annotation = new PDAnnotationTextMarkup(PDAnnotationTextMarkup.SUB_TYPE_HIGHLIGHT);
         annotation.setRectangle(rectangle);
@@ -304,6 +361,12 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
         page.getAnnotations().add(annotation);
     }
 
+    /**
+     * Downloads PDF bytes from Azure Blob Storage. Decodes the blob name if initial download fails.
+     *
+     * @param blobName the physical storage path key
+     * @return downloaded file bytes
+     */
     private byte[] downloadBlob(String blobName) {
         try {
             return blobClient(blobName).downloadContent().toBytes();
@@ -316,18 +379,37 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
         }
     }
 
+    /**
+     * Uploads bytes to Azure Blob Storage, enforcing PDF content-type headers.
+     *
+     * @param blobName the destination storage key
+     * @param data the byte payload to upload
+     */
     private void uploadBlob(String blobName, byte[] data) {
         BlobClient client = blobClient(blobName);
         client.upload(new ByteArrayInputStream(data), data.length, true);
         client.setHttpHeaders(new BlobHttpHeaders().setContentType("application/pdf"));
     }
 
+    /**
+     * Generates a BlobClient instance for the default container.
+     *
+     * @param blobName name of the blob
+     * @return the BlobClient reference
+     */
     private BlobClient blobClient(String blobName) {
         return blobServiceClient
                 .getBlobContainerClient(cloudProperty.getContainerName())
                 .getBlobClient(blobName);
     }
 
+    /**
+     * Saves changes made to a PDDocument into a byte array.
+     *
+     * @param document the modified document
+     * @return byte array of the updated PDF
+     * @throws IOException on serialization error
+     */
     private byte[] writeDocument(PDDocument document) throws IOException {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             document.save(out);
@@ -335,6 +417,15 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
         }
     }
 
+    /**
+     * Builds a unique target path for the highlighted PDF incorporating session details.
+     *
+     * @param sourceBlobName original PDF filename or path
+     * @param conversationId current chat session context
+     * @param questionId query sequence turn ID
+     * @param userId user identifier
+     * @return the resolved destination blob path
+     */
     private String buildDestBlobName(String sourceBlobName, String conversationId, Integer questionId, UUID userId) {
         String filename = filename(sourceBlobName);
         String baseName = filename.toLowerCase().endsWith(".pdf")
@@ -354,6 +445,15 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
         return Common.HIGHLIGHTED_DOCS_FOLDER + "/" + baseName + suffix + Common.PDF_EXTENSION;
     }
 
+    /**
+     * Generates a secure, time-limited Shared Access Signature (SAS) URL for viewing or downloading.
+     * Appends PDF page fragments (e.g., #page=x) to force browser navigation.
+     *
+     * @param blobName exact target path in storage
+     * @param disposition attachment vs inline disposition flag
+     * @param page page number to jump to (optional)
+     * @return complete signed SAS URL
+     */
     private String generateSasUrl(String blobName, String disposition, Integer page) {
         BlobClient client = blobClient(blobName);
         BlobSasPermission permission = new BlobSasPermission().setReadPermission(true);
@@ -365,10 +465,22 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
         return page == null || page < 1 ? url : url + "#page=" + page;
     }
 
+    /**
+     * Segments text into individual sentences based on standard punctuation boundaries.
+     *
+     * @param text the raw source text
+     * @return list of clean sentences
+     */
     private List<String> sentenceSegments(String text) {
         return Pattern.compile("(?<=[.?!])\\s+").splitAsStream(text).map(String::trim).filter(this::hasText).toList();
     }
 
+    /**
+     * Creates overlapping word sliding windows of 8 words to support fuzzy fallback searches.
+     *
+     * @param text the raw source text
+     * @return list of windows
+     */
     private List<String> wordWindows(String text) {
         String[] words = text.split("\\s+");
         if (words.length <= 10) {
@@ -385,6 +497,11 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
         return windows;
     }
 
+    /**
+     * Instantiates an empty default HighlightedPdfResult structure.
+     *
+     * @return blank result
+     */
     private HighlightedPdfResult emptyResult() {
         return HighlightedPdfResult.builder()
                 .downloadLink("")
@@ -393,15 +510,33 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
                 .build();
     }
 
+    /**
+     * Extracts the simple filename from a full path.
+     *
+     * @param blobName the physical storage path
+     * @return the basename filename
+     */
     private String filename(String blobName) {
         int slash = blobName.lastIndexOf('/');
         return slash >= 0 ? blobName.substring(slash + 1) : blobName;
     }
 
+    /**
+     * Normalizes multiple whitespaces into a single blank space.
+     *
+     * @param value raw value
+     * @return normalized text
+     */
     private String normalizeWhitespace(String value) {
         return value == null ? "" : value.replaceAll("\\s+", " ").trim();
     }
 
+    /**
+     * Verifies that a string is neither null nor completely blank.
+     *
+     * @param value string to verify
+     * @return true if valid
+     */
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
     }

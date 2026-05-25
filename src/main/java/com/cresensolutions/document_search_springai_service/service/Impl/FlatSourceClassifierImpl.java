@@ -28,6 +28,14 @@ public class FlatSourceClassifierImpl implements FlatSourceClassifier {
     private final Map<String, ChatClient> chatClients;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Classifies the user's natural language question to identify the most suitable Database View
+     * registered in the schema registry.
+     * Evaluates metadata, descriptions, and confidence keywords to map the intent.
+     *
+     * @param question the user's raw input query
+     * @return the exact name of the matched view, or the default/first active view if parsing/LLM fails
+     */
     @Override
     public String classify(String question) {
         List<ViewRegistryEntry> views = schemaRegistryService.getActiveViews();
@@ -61,6 +69,14 @@ public class FlatSourceClassifierImpl implements FlatSourceClassifier {
         return views.get(0).viewName();
     }
 
+    /**
+     * Builds a structured prompt supplying the user question and the schemas/keywords of available views,
+     * instructing the LLM to select the single best matching view.
+     *
+     * @param question the user's raw query
+     * @param views the list of currently active views in the registry
+     * @return the formatted prompt string
+     */
     private String buildPrompt(String question, List<ViewRegistryEntry> views) {
         StringBuilder sb = new StringBuilder();
         sb.append("Select the most relevant database view for the user's question.\n\n");

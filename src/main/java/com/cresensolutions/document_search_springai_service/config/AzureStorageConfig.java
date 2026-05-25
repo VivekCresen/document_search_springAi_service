@@ -9,6 +9,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Configuration class that defines factory beans for communicating with Azure Blob Storage.
+ */
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
@@ -17,6 +20,12 @@ public class AzureStorageConfig {
 
     private final CloudProperty cloudProperty;
 
+    /**
+     * Instantiates and configures a BlobServiceClient using StorageSharedKeyCredential credentials.
+     * Strips any double quotes around the secret key if injected incorrectly from dotenv environments.
+     *
+     * @return configured BlobServiceClient client instance
+     */
     @Bean
     public BlobServiceClient blobServiceClient() {
         String key = cloudProperty.getAccountKey();

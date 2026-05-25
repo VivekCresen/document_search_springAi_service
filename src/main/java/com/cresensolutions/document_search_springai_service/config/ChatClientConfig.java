@@ -5,6 +5,9 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Configuration class that defines bean definitions for various ChatClients used throughout the workflows.
+ */
 @Configuration
 public class ChatClientConfig {
 
@@ -24,6 +27,13 @@ public class ChatClientConfig {
     private static final String GENERAL_SYSTEM_PROMPT =
             "You are a helpful assistant for an enterprise workflow. You answer greetings, casual conversation, and broad technical or general knowledge questions accurately and professionally.";
 
+    /**
+     * Factory bean for building ChatClients targeting standalone query reformulations.
+     *
+     * @param builder base Spring AI builder
+     * @param costTrackingAdvisor cost tracking metrics advisor
+     * @return configured ChatClient
+     */
     @Bean(name = STANDALONE_QUERY_CHAT_CLIENT)
     ChatClient standaloneQueryChatClient(ChatClient.Builder builder, CostTrackingAdvisor costTrackingAdvisor) {
         return builder.defaultSystem(STANDALONE_SYSTEM_PROMPT)
@@ -31,6 +41,13 @@ public class ChatClientConfig {
                 .build();
     }
 
+    /**
+     * Factory bean for building ChatClients targeting user query intent classification.
+     *
+     * @param builder base Spring AI builder
+     * @param costTrackingAdvisor cost tracking metrics advisor
+     * @return configured ChatClient
+     */
     @Bean(name = INTENT_CLASSIFIER_CHAT_CLIENT)
     ChatClient intentClassifierChatClient(ChatClient.Builder builder, CostTrackingAdvisor costTrackingAdvisor) {
         return builder.defaultSystem(INTENT_SYSTEM_PROMPT)
@@ -38,6 +55,13 @@ public class ChatClientConfig {
                 .build();
     }
 
+    /**
+     * Factory bean for building ChatClients targeting secured RAG orchestration text synthesis.
+     *
+     * @param builder base Spring AI builder
+     * @param costTrackingAdvisor cost tracking metrics advisor
+     * @return configured ChatClient
+     */
     @Bean(name = SECURED_RAG_CHAT_CLIENT)
     ChatClient securedRagChatClient(ChatClient.Builder builder, CostTrackingAdvisor costTrackingAdvisor) {
         return builder.defaultSystem(RAG_SYSTEM_PROMPT)
@@ -45,6 +69,13 @@ public class ChatClientConfig {
                 .build();
     }
 
+    /**
+     * Factory bean for building ChatClients targeting general user conversational requests.
+     *
+     * @param builder base Spring AI builder
+     * @param costTrackingAdvisor cost tracking metrics advisor
+     * @return configured ChatClient
+     */
     @Bean(name = GENERAL_CHAT_CLIENT)
     ChatClient generalChatClient(ChatClient.Builder builder, CostTrackingAdvisor costTrackingAdvisor) {
         return builder.defaultSystem(GENERAL_SYSTEM_PROMPT)

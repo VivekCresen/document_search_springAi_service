@@ -26,6 +26,15 @@ public class ResultsToNlpServiceImpl implements ResultsToNlpService {
     private final Map<String, ChatClient> chatClients;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Translates raw database rows into a clear, natural-language explanation matching the user's question language.
+     * Uses the default secured chat client.
+     *
+     * @param question the user's raw query
+     * @param rows the list of database results to summarize
+     * @param isHybrid flag indicating if results are rendered in combination with direct text layouts
+     * @return the generated conversational summary text
+     */
     @Override
     public String generateNlpAnswer(String question, List<Map<String, Object>> rows, boolean isHybrid) {
         if (rows == null || rows.isEmpty()) {
@@ -49,6 +58,13 @@ public class ResultsToNlpServiceImpl implements ResultsToNlpService {
         }
     }
 
+    /**
+     * Generates a dynamic, engaging single-sentence introduction for tabular result layouts.
+     *
+     * @param question user query
+     * @param rowCount count of records in table
+     * @return the generated introduction sentence
+     */
     @Override
     public String generateTableIntro(String question, int rowCount) {
         String prompt = """
@@ -71,8 +87,15 @@ public class ResultsToNlpServiceImpl implements ResultsToNlpService {
         }
     }
 
-    // -------------------------------------------------------------------------
-
+    /**
+     * Constructs a structured prompt supplying query results, row counts, and context to the LLM.
+     *
+     * @param question user question
+     * @param dataJson JSON string of serialized rows
+     * @param totalRows total row count
+     * @param isHybrid hybrid mode indicator
+     * @return formatted prompt string
+     */
     private String buildNlpPrompt(String question, String dataJson, int totalRows, boolean isHybrid) {
         String context = isHybrid
                 ? "Provide a concise summary answer. The full records will be shown separately."
@@ -89,6 +112,13 @@ public class ResultsToNlpServiceImpl implements ResultsToNlpService {
                 """.formatted(question, totalRows, dataJson, context);
     }
 
+    /**
+     * Safely serializes query result rows into a pretty-printed JSON string,
+     * truncating up to MAX_ROWS_IN_PROMPT to avoid prompt bloat.
+     *
+     * @param rows database query rows
+     * @return pretty JSON representation of records
+     */
     private String serializeRows(List<Map<String, Object>> rows) {
         List<Map<String, Object>> sample = rows.size() > MAX_ROWS_IN_PROMPT
                 ? rows.subList(0, MAX_ROWS_IN_PROMPT)
@@ -100,6 +130,13 @@ public class ResultsToNlpServiceImpl implements ResultsToNlpService {
         }
     }
 
+    /**
+     * Fallback formatter when the LLM connection fails.
+     *
+     * @param question user question
+     * @param rows database result rows
+     * @return static fallback text
+     */
     private String buildFallbackAnswer(String question, List<Map<String, Object>> rows) {
         if (rows.size() == 1) {
             return "Found 1 record: " + rows.get(0).toString();

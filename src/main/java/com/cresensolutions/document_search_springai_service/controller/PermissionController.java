@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+/**
+ * REST Controller providing operations to check, view, and clear user permissions and folder restrictions.
+ */
 @RestController
 @RequestMapping("/permissions")
 @RequiredArgsConstructor
@@ -22,6 +25,14 @@ public class PermissionController {
 
     private final UserAccessService userAccessService;
 
+    /**
+     * Checks if a user has permissions for a set of file IDs and folder IDs.
+     *
+     * @param request permission evaluation payload containing files and folders
+     * @param username request context username
+     * @param email request context email
+     * @return PermissionCheckResponse indicating allowed/denied resources
+     */
     @PostMapping("/check")
     public PermissionCheckResponse checkPermissions(
             @RequestBody PermissionCheckRequest request,
@@ -31,6 +42,13 @@ public class PermissionController {
         return userAccessService.checkPermissions(userAccessService.resolveCurrentUser(username, email), request);
     }
 
+    /**
+     * Resolves currently active access profile details and restricted folders for the requester.
+     *
+     * @param username request context username
+     * @param email request context email
+     * @return access specifications map
+     */
     @GetMapping("/my-access")
     public Map<String, Object> myAccess(
             @RequestHeader(value = Common.HEADER_X_USERNAME, required = false) String username,
@@ -39,6 +57,13 @@ public class PermissionController {
         return userAccessService.getMyAccess(userAccessService.resolveCurrentUser(username, email));
     }
 
+    /**
+     * Clears cached permission profiles for the currently authenticated user session.
+     *
+     * @param username request context username
+     * @param email request context email
+     * @return response indicating clearing status map
+     */
     @PostMapping("/clear-cache")
     public ResponseEntity<Map<String, Object>> clearPermissionCache(
             @RequestHeader(value = Common.HEADER_X_USERNAME, required = false) String username,

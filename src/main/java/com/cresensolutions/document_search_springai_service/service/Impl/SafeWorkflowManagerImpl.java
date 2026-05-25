@@ -36,11 +36,26 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
     private final Map<String, CachedConversation> activeConversations = new ConcurrentHashMap<>();
     private final AtomicInteger requestCounter = new AtomicInteger();
 
+    /**
+     * Post-construct initialization hook. Logs the successful coordinator setup.
+     */
     @PostConstruct
     void initialize() {
         log.info("Initialized SafeWorkflowManager with SecuredUnifiedQueryWorkflow");
     }
 
+    /**
+     * Processes a single question synchronously, retrieving or creating a stateful
+     * workflow session for the user's conversation context.
+     *
+     * @param conversationId current chat session token
+     * @param requestId tracing/logging UUID representing this turn
+     * @param question raw user question string
+     * @param username username of requester
+     * @param questionId query sequence turn ID
+     * @param userId unique user identifier
+     * @return workflow execution results map
+     */
     @Override
     public Map<String, Object> processQuestion(
             String conversationId,
@@ -54,6 +69,17 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
         return workflow.processQuestionWithHistory(requestId, question, username, questionId);
     }
 
+    /**
+     * Asynchronously executes query processing in the background, enforcing timeouts.
+     *
+     * @param conversationId current chat session token
+     * @param requestId tracing/logging UUID representing this turn
+     * @param question raw user question string
+     * @param username username of requester
+     * @param questionId query sequence turn ID
+     * @param userId unique user identifier
+     * @return CompletableFuture completing with the workflow execution results map
+     */
     @Override
     public CompletableFuture<Map<String, Object>> processQuestionAsync(
             String conversationId,
@@ -66,7 +92,7 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
         return CompletableFuture.supplyAsync(
                         () -> processQuestion(conversationId, requestId, question, username, questionId, userId),
                         taskExecutor
-                )
+                 )
                 .orTimeout(workflowProperty.getRequestTimeoutSeconds(), TimeUnit.SECONDS);
     }
 
@@ -106,6 +132,11 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
         return cached.workflow();
     }
 
+    /**
+     * Computes cache statistics, including active vs. expired workflows and total requests processed.
+     *
+     * @return map of key performance and capacity metrics
+     */
     @Override
     public Map<String, Object> getStats() {
         cleanupIfNeeded();
@@ -121,11 +152,21 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
         );
     }
 
+    /**
+     * Constructs a scoped composite key for cache lookups to support multiple users.
+     *
+     * @param conversationId session token
+     * @param userId user identifier
+     * @return string key representation
+     */
     private String cacheKey(String conversationId, java.util.UUID userId) {
         // Include user id so two users cannot share the same cached conversation accidentally.
         return conversationId + "::" + (userId == null ? "anonymous" : userId.toString());
     }
 
+    /**
+     * Periodically triggers cache eviction routines on query request count boundaries.
+     */
     private void cleanupOccasionally() {
         // Avoid sorting the cache on every request; periodic cleanup is enough for this small map.
         if (requestCounter.incrementAndGet() % 64 == 0) {
@@ -133,6 +174,9 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
         }
     }
 
+    /**
+     * Triggers active cache size reduction via LRU sorting if size limits are breached.
+     */
     private void cleanupIfNeeded() {
         int maxSize = workflowProperty.getConversationCacheSize();
         if (activeConversations.size() <= maxSize) {
@@ -153,23 +197,47 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
         private final SecuredEnhancedUnifiedWorkflow workflow;
         private Instant lastAccessed;
 
+        /**
+         * Wraps a stateful workflow into a cache record.
+         *
+         * @param workflow the stateful workflow instance
+         */
         private CachedConversation(SecuredEnhancedUnifiedWorkflow workflow) {
             this.workflow = workflow;
             this.lastAccessed = Instant.now();
         }
 
+        /**
+         * Obtains the wrapped stateful workflow instance.
+         *
+         * @return the workflow reference
+         */
         private SecuredEnhancedUnifiedWorkflow workflow() {
             return workflow;
         }
 
+        /**
+         * Gets the timestamp of last access.
+         *
+         * @return Instant timestamp
+         */
         private Instant lastAccessed() {
             return lastAccessed;
         }
 
+        /**
+         * Renews the last access timestamp to the current instant.
+         */
         private void touch() {
             lastAccessed = Instant.now();
         }
 
+        /**
+         * Evaluates if the elapsed idle duration exceeds the configured lifetime timeout.
+         *
+         * @param timeoutSeconds lifetime in seconds
+         * @return true if expired
+         */
         private boolean isExpired(long timeoutSeconds) {
             return Instant.now().minusSeconds(timeoutSeconds).isAfter(lastAccessed);
         }

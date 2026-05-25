@@ -24,6 +24,15 @@ public class SemanticRankerServiceImpl implements SemanticRankerService {
     private final org.springframework.beans.factory.ObjectProvider<EmbeddingModel> embeddingModelProvider;
     private final SemanticCacheManager semanticCacheManager;
 
+    /**
+     * Ranks potential categorical cell values in database columns according to semantic similarity
+     * with the user's question, returning top matching values to feed as prompt filters.
+     *
+     * @param question user query
+     * @param viewName the database view name context
+     * @param routingMetadata routing metadata containing lists of categorical columns
+     * @return a map of ranked categorical values grouped by column name
+     */
     @Override
     public Map<String, List<String>> rankCategoricalValues(String question, String viewName, Map<String, Object> routingMetadata) {
         EmbeddingModel embeddingModel = embeddingModelProvider.getIfAvailable();
@@ -101,6 +110,13 @@ public class SemanticRankerServiceImpl implements SemanticRankerService {
         return semanticHints;
     }
 
+    /**
+     * Extracts allowed categorical values for a given column from view metadata schema config.
+     *
+     * @param routingMetadata metadata config map
+     * @param col target column key
+     * @return list of allowable categorical values
+     */
     @SuppressWarnings("unchecked")
     private List<String> extractValidValues(Map<String, Object> routingMetadata, String col) {
         if (!routingMetadata.containsKey("column_values")) {
@@ -113,6 +129,13 @@ public class SemanticRankerServiceImpl implements SemanticRankerService {
         return null;
     }
 
+    /**
+     * Computes the cosine similarity metric between two embedding vector arrays.
+     *
+     * @param vec1 first embedding vector
+     * @param vec2 second embedding vector
+     * @return similarity score between 0.0 and 1.0
+     */
     private double cosineSimilarity(float[] vec1, float[] vec2) {
         if (vec1.length != vec2.length) {
             return 0.0;

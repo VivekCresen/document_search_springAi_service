@@ -47,6 +47,13 @@ public class BatchOperationServiceImpl implements BatchOperationService {
         log.info("Batch updated {} files to status {}", files.size(), status);
     }
 
+    /**
+     * Retrieves a mapping of full file paths to their metadata for a list of document IDs.
+     * Filters out any document IDs that do not exist in the repository.
+     *
+     * @param documentIds the list of document IDs to query
+     * @return a map matching full file paths to their FileMetadata
+     */
     @Override
     @Transactional(readOnly = true)
     public Map<String, FileMetadata> getFilesByDocumentIds(List<String> documentIds) {
@@ -60,6 +67,12 @@ public class BatchOperationServiceImpl implements BatchOperationService {
                 ));
     }
 
+    /**
+     * Retrieves all file metadata records associated with the specified folder IDs.
+     *
+     * @param folderIds the list of folder IDs to query
+     * @return a list of FileMetadata records found within those folders
+     */
     @Override
     @Transactional(readOnly = true)
     public List<FileMetadata> getFilesByFolderIds(List<String> folderIds) {

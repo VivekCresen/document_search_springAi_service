@@ -15,11 +15,17 @@ import java.time.Duration;
 @Configuration
 public class RestTemplateConfig {
 
+    /**
+     * Declares and configures a shared RestTemplate instance with standard connect and read timeouts.
+     *
+     * @param builder base RestTemplateBuilder auto-configured by Spring Boot
+     * @return configured RestTemplate
+     */
     @Bean
     public RestTemplate restTemplate(RestTemplateBuilder builder) {
         return builder
                 .connectTimeout(Duration.ofSeconds(5))
-                .readTimeout(Duration.ofSeconds(10))
+                .readTimeout(Duration.ofSeconds(30))
                 .build();
     }
 }

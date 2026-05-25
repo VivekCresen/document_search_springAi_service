@@ -28,6 +28,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+/**
+ * Configuration class that sets up the HTTP Security filter chains, authentication managers, and password encoders.
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -37,6 +40,11 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    /**
+     * Factory bean for building standard database authentication provider with BCrypt encoders.
+     *
+     * @return DaoAuthenticationProvider provider
+     */
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
@@ -47,11 +55,23 @@ public class SecurityConfig {
         return authProvider;
     }
 
+    /**
+     * Resolves the globally configured Spring AuthenticationManager bean.
+     *
+     * @param authConfig Spring authentication configuration builder context
+     * @return AuthenticationManager instance
+     * @throws Exception if failed to resolve manager
+     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
     }
 
+    /**
+     * Exposes standard BCryptPasswordEncoder bean for hashing secrets securely.
+     *
+     * @return PasswordEncoder instance
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -62,6 +82,8 @@ public class SecurityConfig {
      * Without this, Spring Security's default behaviour is to return 403 (AccessDeniedException)
      * because no AuthenticationException is thrown — the JWT filter simply skips setting
      * the SecurityContext and lets the request through unauthenticated.
+     *
+     * @return AuthenticationEntryPoint entry point instance
      */
     @Bean
     public AuthenticationEntryPoint jwtAuthEntryPoint() {
@@ -75,6 +97,8 @@ public class SecurityConfig {
     /**
      * Returns HTTP 403 only when a fully-authenticated user lacks permission.
      * This separates the semantics of 401 (not authenticated) from 403 (not authorised).
+     *
+     * @return AccessDeniedHandler handler instance
      */
     @Bean
     public AccessDeniedHandler jwtAccessDeniedHandler() {
@@ -85,6 +109,13 @@ public class SecurityConfig {
         };
     }
 
+    /**
+     * Sets up the main HTTP security filter chain defining access levels, dispatcher mappings, and filters.
+     *
+     * @param http HttpSecurity container
+     * @return compiled SecurityFilterChain
+     * @throws Exception if security building fails
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
@@ -115,6 +146,8 @@ public class SecurityConfig {
      * and any deployed frontend origin to communicate with this backend.
      * Spring Security processes CORS before authentication, so this must be registered
      * at the filter chain level — controller-level @CrossOrigin alone is insufficient.
+     *
+     * @return CorsConfigurationSource instance
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

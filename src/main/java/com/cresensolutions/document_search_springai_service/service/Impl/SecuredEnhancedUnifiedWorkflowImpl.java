@@ -20,6 +20,16 @@ public class SecuredEnhancedUnifiedWorkflowImpl implements SecuredEnhancedUnifie
     private final java.util.UUID userId;
     private final int recentMessageLimit;
 
+    /**
+     * Executes the query workflow under context history, automatically loading recent chat messages
+     * for query rewriting, tracking execution latency, and saving the final exchange back to the database history.
+     *
+     * @param requestId tracing/logging UUID representing this turn
+     * @param question raw user question string
+     * @param username username of requester
+     * @param questionId query sequence turn ID
+     * @return workflow execution results map
+     */
     @Override
     public Map<String, Object> processQuestionWithHistory(
             String requestId,

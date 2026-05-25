@@ -13,6 +13,9 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * REST Controller responsible for providing basic system metadata, health checks, and operational metrics.
+ */
 @RestController
 @RequiredArgsConstructor
 public class AppInfoController {
@@ -21,6 +24,11 @@ public class AppInfoController {
     private final WorkflowProperty workflowProperty;
     private final ObjectProvider<HealthEndpoint> healthEndpointProvider;
 
+    /**
+     * Endpoint resolving the application name, version, feature lists, and main available endpoints map.
+     *
+     * @return REST API description metadata map
+     */
     @GetMapping("/")
     public Map<String, Object> root() {
         return Map.of(
@@ -45,6 +53,11 @@ public class AppInfoController {
         );
     }
 
+    /**
+     * Exposes simple system health status checks querying the actuator backend state.
+     *
+     * @return system health details map
+     */
     @GetMapping("/health")
     public Map<String, Object> health() {
         HealthEndpoint healthEndpoint = healthEndpointProvider.getIfAvailable();
@@ -61,6 +74,11 @@ public class AppInfoController {
         );
     }
 
+    /**
+     * Resolves currently active configuration boundaries and thread pool workflow statistics.
+     *
+     * @return application operational metrics map
+     */
     @GetMapping("/metrics")
     public Map<String, Object> metrics() {
         return Map.of(
