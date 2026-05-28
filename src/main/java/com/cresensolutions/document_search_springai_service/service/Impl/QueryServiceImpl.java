@@ -46,15 +46,29 @@ public class QueryServiceImpl implements QueryService {
         // Ensure we have a valid conversation ID (generate one if missing)
         String conversationId = resolveConversationId(data.getConversationId());
 
-        // Delegate the actual processing to the workflow manager
-        return workflowManager.processQuestionAsync(
-                        conversationId,
-                        data.getRequestId(),
-                        data.getQuestion(),
-                        data.getEmail(),
-                        data.getQuestionId(),
-                        data.getUserId()
-                )
+        CompletableFuture<Map<String, Object>> futureResult;
+        if (data.getAttachedFiles() != null) {
+            futureResult = workflowManager.processQuestionAsync(
+                    conversationId,
+                    data.getRequestId(),
+                    data.getQuestion(),
+                    data.getEmail(),
+                    data.getQuestionId(),
+                    data.getUserId(),
+                    data.getAttachedFiles()
+            );
+        } else {
+            futureResult = workflowManager.processQuestionAsync(
+                    conversationId,
+                    data.getRequestId(),
+                    data.getQuestion(),
+                    data.getEmail(),
+                    data.getQuestionId(),
+                    data.getUserId()
+            );
+        }
+
+        return futureResult
                 .thenApply(result -> {
                     // Once workflow finishes, build the envelope response and forward it
                     EnvelopeResponse response = buildResponse(data, conversationId, result);

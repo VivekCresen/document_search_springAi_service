@@ -32,4 +32,8 @@ public class RequestData {
 
     @JsonProperty("user_id")
     private java.util.UUID userId;
+
+    @JsonProperty("attached_files")
+    private java.util.List<String> attachedFiles;
 }
+

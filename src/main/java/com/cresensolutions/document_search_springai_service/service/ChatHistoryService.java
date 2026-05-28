@@ -44,4 +44,14 @@ public interface ChatHistoryService {
      * Builds the recent conversation text that is sent to the standalone query generator.
      */
     String getRecentContext(String chatId, UUID userId, int messageLimit);
+
+    /**
+     * Retrieves the entire conversation history map for the user.
+     */
+    Map<String, Object> getConversations(UUID userId);
+
+    /**
+     * Clears all conversation history for the user.
+     */
+    void clearConversations(UUID userId);
 }

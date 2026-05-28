@@ -17,6 +17,18 @@ public interface SecuredUnifiedQueryWorkflow {
             String conversationContext,
             String conversationId,
             Integer questionId,
-            UUID userId
+            UUID userId,
+            java.util.List<String> attachedFiles
     );
+
+    default Map<String, Object> processQuestion(
+            String question,
+            String username,
+            String conversationContext,
+            String conversationId,
+            Integer questionId,
+            UUID userId
+    ) {
+        return processQuestion(question, username, conversationContext, conversationId, questionId, userId, null);
+    }
 }

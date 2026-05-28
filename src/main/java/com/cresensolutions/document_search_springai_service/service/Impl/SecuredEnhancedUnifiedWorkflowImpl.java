@@ -35,25 +35,38 @@ public class SecuredEnhancedUnifiedWorkflowImpl implements SecuredEnhancedUnifie
             String requestId,
             String question,
             String username,
-            Integer questionId
+            Integer questionId,
+            java.util.List<String> attachedFiles
     ) {
         // Recent history helps the base workflow rewrite follow-up questions into standalone queries.
         String context = chatHistoryService.getRecentContext(conversationId, userId, recentMessageLimit);
         String requestTimestamp = java.time.OffsetDateTime.now().toString();
         long startTime = System.currentTimeMillis();
-        Map<String, Object> result = baseWorkflow.processQuestion(
-                question,
-                username,
-                context,
-                conversationId,
-                questionId,
-                userId
-        );
+        Map<String, Object> result;
+        if (attachedFiles != null) {
+            result = baseWorkflow.processQuestion(
+                    question,
+                    username,
+                    context,
+                    conversationId,
+                    questionId,
+                    userId,
+                    attachedFiles
+            );
+        } else {
+            result = baseWorkflow.processQuestion(
+                    question,
+                    username,
+                    context,
+                    conversationId,
+                    questionId,
+                    userId
+            );
+        }
         long latencyMs = System.currentTimeMillis() - startTime;
 
         Map<String, Object> metadata = new LinkedHashMap<>(result);
         metadata.remove("nlp_answer");
-        metadata.remove("citations");
         metadata.remove("prefetched_docs");
 
         // Pass essential simple parameters through metadata to avoid breaking appendExchange signature

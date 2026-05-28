@@ -58,7 +58,7 @@ class SecuredEnhancedUnifiedWorkflowImplTest {
                 eq("standalone q"),
                 eq("The answer"),
                 eq(1),
-                argThat(meta -> !meta.containsKey("nlp_answer") && !meta.containsKey("citations") && !meta.containsKey("prefetched_docs"))
+                argThat(meta -> !meta.containsKey("nlp_answer") && !meta.containsKey("prefetched_docs"))
         );
     }
 
@@ -99,8 +99,8 @@ class SecuredEnhancedUnifiedWorkflowImplTest {
 
         Map<String, Object> captured = metaCaptor.getValue();
         assertThat(captured).doesNotContainKey("nlp_answer");
-        assertThat(captured).doesNotContainKey("citations");
         assertThat(captured).doesNotContainKey("prefetched_docs");
+        assertThat(captured).containsKey("citations");
         assertThat(captured).containsKey("intent");
     }
 }

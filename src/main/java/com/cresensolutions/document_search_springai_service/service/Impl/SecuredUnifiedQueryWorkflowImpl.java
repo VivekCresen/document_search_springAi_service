@@ -28,6 +28,8 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Implementation of the Secured Unified Query Workflow.
@@ -78,10 +80,11 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
             String conversationContext,
             String conversationId,
             Integer questionId,
-            java.util.UUID userId
+            UUID userId,
+            List<String> attachedFiles
     ) {
         // Step 0: Check for hardcoded common responses to save tokens and time
-        java.util.Optional<String> commonAnswer = commonResponseService.getCommonResponse(question);
+       Optional<String> commonAnswer = commonResponseService.getCommonResponse(question);
         if (commonAnswer.isPresent()) {
             log.info("Handled common question '{}' without LLM", question);
             Map<String, Object> result = new LinkedHashMap<>();
@@ -116,7 +119,8 @@ public class SecuredUnifiedQueryWorkflowImpl implements SecuredUnifiedQueryWorkf
         List<SearchResultDocument> prefetchedDocs = securedIntentClassifier.searchRelevantDocumentsWithSecurity(
                 standaloneQuery,
                 searchFilter,
-                10
+                10,
+                attachedFiles
         );
         
         // Phase 2: Classify intent based on the query and prefetched document metadata

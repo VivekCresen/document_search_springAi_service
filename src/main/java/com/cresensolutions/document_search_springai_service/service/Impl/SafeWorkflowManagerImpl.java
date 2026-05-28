@@ -63,10 +63,15 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
             String question,
             String username,
             Integer questionId,
-            java.util.UUID userId
+            java.util.UUID userId,
+            java.util.List<String> attachedFiles
     ) {
         SecuredEnhancedUnifiedWorkflow workflow = getOrCreateConversation(conversationId, userId);
-        return workflow.processQuestionWithHistory(requestId, question, username, questionId);
+        if (attachedFiles != null) {
+            return workflow.processQuestionWithHistory(requestId, question, username, questionId, attachedFiles);
+        } else {
+            return workflow.processQuestionWithHistory(requestId, question, username, questionId);
+        }
     }
 
     /**
@@ -78,6 +83,7 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
      * @param username username of requester
      * @param questionId query sequence turn ID
      * @param userId unique user identifier
+     * @param attachedFiles list of staged files
      * @return CompletableFuture completing with the workflow execution results map
      */
     @Override
@@ -87,10 +93,11 @@ public class SafeWorkflowManagerImpl implements SafeWorkflowManager {
             String question,
             String username,
             Integer questionId,
-            java.util.UUID userId
+            java.util.UUID userId,
+            java.util.List<String> attachedFiles
     ) {
         return CompletableFuture.supplyAsync(
-                        () -> processQuestion(conversationId, requestId, question, username, questionId, userId),
+                        () -> processQuestion(conversationId, requestId, question, username, questionId, userId, attachedFiles),
                         taskExecutor
                  )
                 .orTimeout(workflowProperty.getRequestTimeoutSeconds(), TimeUnit.SECONDS);

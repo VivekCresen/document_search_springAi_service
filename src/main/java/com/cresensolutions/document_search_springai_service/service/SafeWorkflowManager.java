@@ -1,5 +1,6 @@
 package com.cresensolutions.document_search_springai_service.service;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -26,8 +27,20 @@ public interface SafeWorkflowManager {
             String question,
             String username,
             Integer questionId,
-            UUID userId
+            UUID userId,
+            List<String> attachedFiles
     );
+
+    default Map<String, Object> processQuestion(
+            String conversationId,
+            String requestId,
+            String question,
+            String username,
+            Integer questionId,
+            UUID userId
+    ) {
+        return processQuestion(conversationId, requestId, question, username, questionId, userId, null);
+    }
 
     /**
      * Processes one question on the configured task executor and applies request timeout rules.
@@ -38,8 +51,20 @@ public interface SafeWorkflowManager {
             String question,
             String username,
             Integer questionId,
-            UUID userId
+            UUID userId,
+            List<String> attachedFiles
     );
+
+    default CompletableFuture<Map<String, Object>> processQuestionAsync(
+            String conversationId,
+            String requestId,
+            String question,
+            String username,
+            Integer questionId,
+            UUID userId
+    ) {
+        return processQuestionAsync(conversationId, requestId, question, username, questionId, userId, null);
+    }
 
     /**
      * Returns the active workflow for a conversation or creates one when missing/expired.

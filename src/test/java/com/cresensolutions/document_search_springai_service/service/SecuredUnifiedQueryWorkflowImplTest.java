@@ -79,7 +79,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
     private void stubPhase0And1(String intent) {
         when(standaloneQueryService.createStandaloneQuery(anyString(), anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(userAccessService.createSearchFilter(anyString())).thenReturn("filter");
-        when(securedIntentClassifier.searchRelevantDocumentsWithSecurity(anyString(), anyString(), anyInt()))
+        when(securedIntentClassifier.searchRelevantDocumentsWithSecurity(anyString(), anyString(), anyInt(), any()))
                 .thenReturn(List.of());
         when(securedIntentClassifier.classifyIntent(anyString(), anyString(), anyList()))
                 .thenReturn(classificationFor(intent));
@@ -217,7 +217,7 @@ class SecuredUnifiedQueryWorkflowImplTest {
         ic.setPrefetchedDocs(List.of()); // Database intent doesn't need docs
         when(standaloneQueryService.createStandaloneQuery(anyString(), anyString())).thenReturn("q");
         when(userAccessService.createSearchFilter(anyString())).thenReturn("filter");
-        when(securedIntentClassifier.searchRelevantDocumentsWithSecurity(anyString(), anyString(), anyInt()))
+        when(securedIntentClassifier.searchRelevantDocumentsWithSecurity(anyString(), anyString(), anyInt(), any()))
                 .thenReturn(List.of());
         when(securedIntentClassifier.classifyIntent(anyString(), anyString(), anyList())).thenReturn(ic);
 

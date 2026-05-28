@@ -178,6 +178,13 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
         // 9. response_timestamp
         messageEntry.put("response_timestamp", OffsetDateTime.now().toString());
 
+        // 10. citations
+        Object citationsData = null;
+        if (metadata != null) {
+            citationsData = metadata.get("citations");
+        }
+        messageEntry.put("citations", citationsData);
+
         appendMessageToChat(chatId, userId, messageEntry);
     }
 
@@ -302,5 +309,24 @@ public class ChatHistoryServiceImpl implements ChatHistoryService {
                             .build();
                     return chatHistoryRepository.save(newHist);
                 });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getConversations(UUID userId) {
+        if (userId == null) return Map.of();
+        Optional<ChatHistory> historyOpt = chatHistoryRepository.findByUserId(userId);
+        return historyOpt.map(ChatHistory::getConversations).orElse(Map.of());
+    }
+
+    @Override
+    @Transactional
+    public void clearConversations(UUID userId) {
+        if (userId == null) return;
+        ChatHistory history = getOrCreateChatHistory(userId);
+        history.getConversations().clear();
+        history.setTotalSessions(0);
+        history.setTotalQaPairs(0);
+        chatHistoryRepository.save(history);
     }
 }

@@ -74,13 +74,18 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
     }
 
     @Override
-    public List<SearchResultDocument> searchRelevantDocumentsWithSecurity(String question, String searchFilter, int topK) {
+    public List<SearchResultDocument> searchRelevantDocumentsWithSecurity(
+            String question,
+            String searchFilter,
+            int topK,
+            List<String> attachedFiles
+    ) {
         if (!hasAzureSearchConfig() || question == null || question.isBlank()) {
             return Collections.emptyList();
         }
 
         try {
-            Map<String, Object> request = buildSearchRequest(question, searchFilter, Math.max(1, topK));
+            Map<String, Object> request = buildSearchRequest(question, searchFilter, Math.max(1, topK), attachedFiles);
 
             @SuppressWarnings("unchecked")
             Map<String, Object> response = restClient
@@ -141,14 +146,32 @@ public class SecuredIntentClassifierImpl implements SecuredIntentClassifier {
      * @param topK maximum candidate retrieval limit
      * @return search request payload map
      */
-    private Map<String, Object> buildSearchRequest(String question, String searchFilter, int topK) {
+    private Map<String, Object> buildSearchRequest(
+            String question,
+            String searchFilter,
+            int topK,
+            List<String> attachedFiles
+    ) {
         Map<String, Object> request = new java.util.LinkedHashMap<>();
         request.put("search", question);
         request.put("top", topK);
         request.put("searchFields", String.join(",", SEARCH_FIELDS));
         request.put("select", String.join(",", SELECT_FIELDS));
-        if (searchFilter != null && !searchFilter.isBlank()) {
-            request.put("filter", searchFilter);
+
+        String finalFilter = searchFilter;
+        if (attachedFiles != null && !attachedFiles.isEmpty()) {
+            String filesFilter = attachedFiles.stream()
+                    .map(f -> "source eq '" + f.replace("'", "''") + "'")
+                    .collect(java.util.stream.Collectors.joining(" or "));
+            if (finalFilter != null && !finalFilter.isBlank()) {
+                finalFilter = "(" + finalFilter + ") and (" + filesFilter + ")";
+            } else {
+                finalFilter = filesFilter;
+            }
+        }
+
+        if (finalFilter != null && !finalFilter.isBlank()) {
+            request.put("filter", finalFilter);
         }
         return request;
     }

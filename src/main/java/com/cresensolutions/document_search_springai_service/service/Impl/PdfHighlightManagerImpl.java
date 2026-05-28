@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 
 /**
  * Implementation of the PDF Highlighting Manager.
@@ -93,6 +94,12 @@ public class PdfHighlightManagerImpl implements PdfHighlightManager {
             // Use PDFBox to load and manipulate the document
             try (PDDocument document = PDDocument.load(pdfBytes)) {
                 Color highlightColor = color == null ? Color.YELLOW : color;
+                
+                // Override/Set PDF Title metadata so the browser PDF viewer displays the actual filename instead of "(anonymous)"
+                if (document.getDocumentInformation() == null) {
+                    document.setDocumentInformation(new PDDocumentInformation());
+                }
+                document.getDocumentInformation().setTitle(filename(pdfBlobName));
                 
                 // 2. Try Strategy 1: Coordinate-based highlighting (Fastest & most precise)
                 // This uses the 'diPageSpans' which contain physical coordinates in inches.
